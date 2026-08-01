@@ -2,6 +2,13 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.3.0] — 2026-08-01
+
+### Added
+- Events home with live/draft/past sections and a Create Event flow for admins.
+- Event detail page: share link, registration, waitlist, check-in, doubles partner picking, admin status controls.
+- Matches with score recording and event standings.
+
 ## [0.2.0] — 2026-08-01
 
 ### Added
