@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Light palette (default) ── */
+:root {
+  --background: #FAFAF9;       /* stone-50 */
+  --foreground: #1C1917;       /* stone-900 */
+  --surface: #FFFFFF;          /* white */
+  --surface-alt: #F5F5F4;     /* stone-100 */
+  --border: #E7E5E4;          /* stone-200 */
+  --border-light: #F5F5F4;    /* stone-100 */
+  --muted: #78716C;           /* stone-500 */
+  --muted-light: #A8A29E;     /* stone-400 */
+  --muted-lighter: #D6D3D1;   /* stone-300 */
+  --heading: #1C1917;         /* stone-900 */
+  --text: #44403C;            /* stone-700 */
+  --text-light: #78716C;      /* stone-500 */
+  --overlay: rgba(250, 250, 249, 0.6); /* light loading overlay */
+}
+
+/* ── Dark palette (WhatsApp-style near-black) ── */
+.dark {
+  --background: #0A0A0A;       /* near-black */
+  --foreground: #E5E5E5;       /* neutral-200 */
+  --surface: #1A1A1A;          /* dark card */
+  --surface-alt: #111111;      /* slightly darker than surface */
+  --border: #2A2A2A;           /* subtle border */
+  --border-light: #1F1F1F;     /* very subtle divider */
+  --muted: #999999;            /* mid-gray */
+  --muted-light: #666666;      /* dim gray */
+  --muted-lighter: #444444;    /* faint gray */
+  --heading: #FFFFFF;          /* pure white */
+  --text: #D4D4D4;             /* neutral-300 */
+  --text-light: #999999;       /* mid-gray */
+  --overlay: rgba(0, 0, 0, 0.7); /* loading overlay */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-muted: var(--muted);
+  --color-muted-light: var(--muted-light);
+  --color-muted-lighter: var(--muted-lighter);
+  --color-heading: var(--heading);
+  --color-text: var(--text);
+  --color-text-light: var(--text-light);
+  --color-overlay: var(--overlay);
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
