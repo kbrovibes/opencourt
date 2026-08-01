@@ -1,14 +1,20 @@
 import { getAuthPlayer } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import ProfileClient from "./ProfileClient";
+import pkg from "../../../../package.json";
+
+export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const player = await getAuthPlayer();
   if (!player) redirect("/welcome");
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6">
-      <h1 className="text-xl font-bold text-heading">Profile</h1>
-      <p className="text-sm text-muted mt-2">{player.name}</p>
-    </div>
+    <ProfileClient
+      name={player.name}
+      email={player.email}
+      isAdmin={player.isAdmin}
+      version={pkg.version}
+    />
   );
 }

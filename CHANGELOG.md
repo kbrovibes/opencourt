@@ -2,6 +2,12 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.4.0] — 2026-08-01
+
+### Added
+- Users tab for admins: select an open event, then check in / register any user; add users one-by-one or in bulk.
+- Profile tab: edit display name, theme toggle, logout, app version.
+
 ## [0.3.0] — 2026-08-01
 
 ### Added
