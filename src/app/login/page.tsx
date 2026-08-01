@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 
 type Mode = "signin" | "signup";
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const hasError = searchParams.get("error");
   const nextParam = searchParams.get("next");
   const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/";
@@ -45,7 +44,9 @@ function LoginContent() {
       setError(err.message);
       setLoading(false);
     } else {
-      router.push(next);
+      // Full navigation (not router.push) so the fresh auth cookies are
+      // guaranteed to be on the request when the server renders the target.
+      window.location.assign(next);
     }
   }
 

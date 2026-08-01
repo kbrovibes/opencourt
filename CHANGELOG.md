@@ -2,6 +2,14 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.4.1] — 2026-08-01
+
+### Fixed
+- Password sign-in now lands on the intended page (shared event links included) instead of bouncing to the welcome screen.
+
+### Added
+- Test-data cleanup script, decision log (DECISIONS.md), project docs (CLAUDE.md/README).
+
 ## [0.4.0] — 2026-08-01
 
 ### Added
