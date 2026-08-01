@@ -1,0 +1,211 @@
+import { supabase } from "@/lib/supabase";
+
+export type EventStatus = "draft" | "live" | "completed" | "cancelled";
+export type EventType = "singles" | "doubles";
+
+export interface OcEvent {
+  id: string;
+  name: string;
+  event_date: string;
+  start_time: string | null;
+  event_type: EventType;
+  max_players: number;
+  status: EventStatus;
+  checkin_opens_at: string | null;
+  short_code: string;
+  location: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface RosterEntry {
+  id: string;               // oc_event_players row id
+  player_id: string;
+  name: string;
+  registered_at: string;
+  checked_in_at: string | null;
+  partner_id: string | null;
+  waitlisted: boolean;      // computed: registration order beyond max_players
+}
+
+const EVENT_COLS =
+  "id, name, event_date, start_time, event_type, max_players, status, checkin_opens_at, short_code, location, notes, created_by, created_at";
+
+// Unambiguous alphabet for short codes (no 0/O, 1/I/L)
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function randomCode(len = 6): string {
+  let out = "";
+  for (let i = 0; i < len; i++) {
+    out += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  }
+  return out;
+}
+
+export async function listEvents(includeDrafts: boolean): Promise<OcEvent[]> {
+  let query = supabase
+    .from("oc_events")
+    .select(EVENT_COLS)
+    .order("event_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (!includeDrafts) {
+    query = query.neq("status", "draft");
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getEvent(id: string): Promise<OcEvent | null> {
+  const { data } = await supabase.from("oc_events").select(EVENT_COLS).eq("id", id).maybeSingle();
+  return data;
+}
+
+export async function getEventByCode(code: string): Promise<OcEvent | null> {
+  const { data } = await supabase
+    .from("oc_events")
+    .select(EVENT_COLS)
+    .ilike("short_code", code)
+    .maybeSingle();
+  return data;
+}
+
+export interface CreateEventInput {
+  name: string;
+  event_date: string;
+  start_time?: string | null;
+  event_type: EventType;
+  max_players: number;
+  status: "draft" | "live";
+  checkin_opens_at?: string | null;
+  location?: string | null;
+  notes?: string | null;
+  created_by: string;
+}
+
+export async function createEvent(input: CreateEventInput): Promise<OcEvent> {
+  // Retry on the (unlikely) short-code collision
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await supabase
+      .from("oc_events")
+      .insert({ ...input, short_code: randomCode() })
+      .select(EVENT_COLS)
+      .single();
+    if (!error) return data;
+    if (!error.message.includes("short_code")) throw error;
+  }
+  throw new Error("Could not generate a unique short code");
+}
+
+export async function updateEvent(
+  id: string,
+  fields: Partial<Omit<OcEvent, "id" | "short_code" | "created_at" | "created_by">>
+): Promise<void> {
+  const { error } = await supabase.from("oc_events").update(fields).eq("id", id);
+  if (error) throw error;
+}
+
+/** Roster with computed waitlist flags: active registrations beyond max_players, by registration order. */
+export async function getRoster(event: OcEvent): Promise<RosterEntry[]> {
+  const { data, error } = await supabase
+    .from("oc_event_players")
+    .select("id, player_id, registered_at, checked_in_at, withdrawn_at, partner_id, oc_players!oc_event_players_player_id_fkey(name)")
+    .eq("event_id", event.id)
+    .is("withdrawn_at", null)
+    .order("registered_at");
+  if (error) throw error;
+
+  return (data ?? []).map((row, idx) => {
+    const playerRel = row.oc_players as unknown as { name: string } | { name: string }[] | null;
+    const name = Array.isArray(playerRel) ? playerRel[0]?.name : playerRel?.name;
+    return {
+      id: row.id,
+      player_id: row.player_id,
+      name: name ?? "?",
+      registered_at: row.registered_at,
+      checked_in_at: row.checked_in_at,
+      partner_id: row.partner_id,
+      waitlisted: idx >= event.max_players,
+    };
+  });
+}
+
+export async function registerPlayer(eventId: string, playerId: string): Promise<void> {
+  // Re-activate a withdrawn registration if present, else insert
+  const { data: existing } = await supabase
+    .from("oc_event_players")
+    .select("id, withdrawn_at")
+    .eq("event_id", eventId)
+    .eq("player_id", playerId)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.withdrawn_at) {
+      const { error } = await supabase
+        .from("oc_event_players")
+        .update({ withdrawn_at: null, registered_at: new Date().toISOString() })
+        .eq("id", existing.id);
+      if (error) throw error;
+    }
+    return;
+  }
+
+  const { error } = await supabase
+    .from("oc_event_players")
+    .insert({ event_id: eventId, player_id: playerId });
+  if (error) throw error;
+}
+
+export async function withdrawPlayer(eventId: string, playerId: string): Promise<void> {
+  const { error } = await supabase
+    .from("oc_event_players")
+    .update({ withdrawn_at: new Date().toISOString(), checked_in_at: null, partner_id: null })
+    .eq("event_id", eventId)
+    .eq("player_id", playerId);
+  if (error) throw error;
+  // Clear any partner selections pointing at the withdrawn player
+  await supabase
+    .from("oc_event_players")
+    .update({ partner_id: null })
+    .eq("event_id", eventId)
+    .eq("partner_id", playerId);
+}
+
+export async function setCheckedIn(eventId: string, playerId: string, checkedIn: boolean): Promise<void> {
+  // Registers on the fly if needed (admin manual check-in of an unregistered player)
+  await registerPlayer(eventId, playerId);
+  const fields = checkedIn
+    ? { checked_in_at: new Date().toISOString() }
+    : { checked_in_at: null, partner_id: null };
+  const { error } = await supabase
+    .from("oc_event_players")
+    .update(fields)
+    .eq("event_id", eventId)
+    .eq("player_id", playerId);
+  if (error) throw error;
+  if (!checkedIn) {
+    // Clear partner selections pointing at a player who un-checked-in
+    await supabase
+      .from("oc_event_players")
+      .update({ partner_id: null })
+      .eq("event_id", eventId)
+      .eq("partner_id", playerId);
+  }
+}
+
+export async function setPartner(eventId: string, playerId: string, partnerId: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("oc_event_players")
+    .update({ partner_id: partnerId })
+    .eq("event_id", eventId)
+    .eq("player_id", playerId);
+  if (error) throw error;
+}
+
+/** Check-in window: event must be live, and past checkin_opens_at when set. */
+export function checkinOpen(event: OcEvent): boolean {
+  if (event.status !== "live") return false;
+  if (!event.checkin_opens_at) return true;
+  return new Date(event.checkin_opens_at).getTime() <= Date.now();
+}

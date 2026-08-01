@@ -2,6 +2,11 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.2.0] — 2026-08-01
+
+### Added
+- Database schema (`oc_` tables) and full API layer: events CRUD, registration/withdrawal, check-in, partner pick, players (create + bulk), matches (create, score, delete).
+
 ## [0.1.0] — 2026-08-01
 
 ### Added
