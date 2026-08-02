@@ -1,3 +1,33 @@
+# Round 2 — tournaments, skill, editing (2026-08-02)
+
+Decisions for the v0.5.x feature batch. All verified in a real browser on prod (full doubles knockout, 3-team singles knockout with a bye, round robin, skill prompt, user disable).
+
+## Tournament model
+
+1. **Stage machine on live events**: `roster → team_formation → teams_locked → matches_set → started`, admin-driven, each transition guarded server-side. Going back from `matches_set` deletes generated matches; "Un-start" is only offered while no scores exist. Event `status` (live/completed/…) stays independent — complete/cancel works at any stage.
+2. **Teams**: `oc_teams`, seed = creation order (your tap order = seeding). Doubles = 2 taps per team; singles events get an "Add all checked-in" one-tap instead (1-player teams). "Use confirmed pairs" pre-fills doubles teams from mutual partner picks. Teams editable until matches are set.
+3. **Formats shipped**: single elimination, round robin, manual (admin team-vs-team). Checked Liquipedia's CS formats — double elimination, Swiss, and GSL groups are deferred (documented below); single elim + RR cover club tournaments, and "manual" is the escape hatch.
+4. **Single-elim mechanics**: bracket size = next power of two; all rounds pre-created with TBD slots; **top seeds get the byes** and sit directly in round 2; winners auto-advance on score entry. Round names: Final/Semifinals/Quarterfinals/Round N. Champion banner on the Standings tab when the final completes.
+5. **Score corrections**: scores editable only after Start; a completed bracket match isn't rewound by editing (winner already advanced) — regenerate matches for a true reset. RR/manual matches can be deleted while pending.
+6. **Standings** are per-team: W, L, points diff (tiebreak: wins → losses → diff). Old per-player standings replaced; player history can be derived later.
+7. **Match creation now requires locked teams** — the v0.4 free-form player-vs-player match form is gone (it predates the team model). Ad-hoc matches are still possible via Manual/+ Add match using teams.
+
+## Other decisions
+
+8. **Skill levels**: nullable 1–5 (no forced default). Asked once, optionally, at first registration; self-serve in Profile; admin-editable per player. Shown in Users tab as dots; deliberately **not** shown anywhere on event pages (your no-bias rule) — team formation tiles are name-only.
+9. **Disable ≠ delete**: `oc_players.disabled` hides them from the Users list (a "Show disabled (N)" reveal exists) and blocks admin check-in actions; history stays intact. Re-enable from the same panel.
+10. **Today nav**: goes to the live event you're checked into (prefers today's date in IST); otherwise it's just Events home. Highlighted independently of the Events tab.
+11. **Event editing**: everything editable except short code; singles/doubles locks once team formation starts (teams would be invalidated).
+12. **Perf**: everyone_admin flag cached 30s per warm instance (saves a query on ~every request), event-detail queries parallelized, loading skeletons added. Deliberately did NOT add ISR/data-cache to authed pages — correctness first, and pages are single-digit-query cheap.
+13. **Observed during validation**: you were live-testing (RECCA Trials) while I validated — I kept all fixtures separate, cancelled my test events afterwards (Saturday Doubles Bash / Singles Showdown were already cancelled by you, RR Skill Test by me). No real data touched.
+
+## Deferred
+
+- Double elimination / Swiss / GSL groups; bracket seeding editor (drag to reseed)
+- Rewind bracket progression on score edit
+- Auto-suggest balanced teams from skill levels (skill data is now collected)
+- Court assignment / scheduling per match; per-round timing
+
 # Overnight build — decision log (2026-08-01)
 
 Every judgment call made while you slept, for morning review. Flag anything you want changed.

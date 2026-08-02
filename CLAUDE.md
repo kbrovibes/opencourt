@@ -9,7 +9,10 @@ Live: https://opencourt-badminton.vercel.app · Repo: kbrovibes/opencourt
 - **Register** — "I'm interested". Active registrations beyond `max_players` (by registration order) display as waitlist — computed, never stored.
 - **Check in** — separate action once `checkin_opens_at` passes (null = any time while live). Non-admins blocked when checked-in count ≥ max.
 - **Partner** — doubles only, checked-in players pick from other checked-in players; mutual pick = confirmed pair.
-- **Match** — admin-created from checked-in players; scores decide winner; standings = W/L per player.
+- **Team** — formed by admins in the team-formation stage (tap tiles; 2 players for doubles, 1 for singles); seed = creation order.
+- **Stage machine** — live events run roster → team_formation → teams_locked → matches_set → started (`oc_events.stage`).
+- **Match** — team vs team; formats: single elimination (byes to top seeds, winners auto-advance), round robin, manual. Scores only after Start; standings + champion banner in tabs.
+- **Skill level** — nullable 1–5 on players; shown in Users tab only, never on event pages (no team bias).
 
 ### Admin model
 `oc_settings.everyone_admin` (jsonb bool) makes EVERYONE admin while true (current state). Disable:
