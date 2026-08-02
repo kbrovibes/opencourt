@@ -15,6 +15,7 @@ export default async function ProfilePage() {
       email={player.email}
       isAdmin={player.isAdmin}
       version={pkg.version}
+      skill={player.skillLevel}
     />
   );
 }

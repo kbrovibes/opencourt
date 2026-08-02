@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server";
 import { supabase as serviceClient } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { getAuthPlayer } from "@/lib/auth";
+import { getMyCheckedInLiveEventId } from "@/lib/db/events";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import NavigationLoader from "@/components/NavigationLoader";
@@ -39,6 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         email: user.email!,
         userId: user.id,
         isAdmin: claimable.is_admin ?? false,
+        skillLevel: null,
       };
     } else {
       const { data: newPlayer } = await serviceClient
@@ -53,9 +55,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         email: user.email ?? "",
         userId: user.id,
         isAdmin: newPlayer.is_admin ?? false,
+        skillLevel: null,
       };
     }
   }
+
+  // "Today" shortcut: my checked-in live event, else events home
+  const todayEventId = await getMyCheckedInLiveEventId(player.id);
+  const todayHref = todayEventId ? `/events/${todayEventId}` : "/";
 
   return (
     <NavigationLoader>
@@ -65,7 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <main className="flex-1 pt-14 pb-16">
           {children}
         </main>
-        <BottomNav isAdmin={player.isAdmin} />
+        <BottomNav isAdmin={player.isAdmin} todayHref={todayHref} />
         <ServiceWorkerRegistration />
       </div>
     </NavigationLoader>

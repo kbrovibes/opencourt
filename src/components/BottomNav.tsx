@@ -41,23 +41,42 @@ function ProfileIcon({ className }: IconProps) {
   );
 }
 
-const NAV_ITEMS = [
-  { href: "/", label: "Events", Icon: EventsIcon, adminOnly: false },
-  { href: "/users", label: "Users", Icon: UsersIcon, adminOnly: true },
-  { href: "/profile", label: "Profile", Icon: ProfileIcon, adminOnly: false },
-];
+function TodayIcon({ className }: IconProps) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2.5" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <circle cx="12" cy="16" r="3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
-export default function BottomNav({ isAdmin }: { isAdmin: boolean }) {
+export default function BottomNav({ isAdmin, todayHref }: { isAdmin: boolean; todayHref: string }) {
   const pathname = usePathname();
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+
+  const items = [
+    { href: "/", label: "Events", Icon: EventsIcon, show: true },
+    { href: todayHref, label: "Today", Icon: TodayIcon, show: true },
+    { href: "/users", label: "Users", Icon: UsersIcon, show: isAdmin },
+    { href: "/profile", label: "Profile", Icon: ProfileIcon, show: true },
+  ].filter((i) => i.show);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex bg-surface border-t border-border-light">
-      {visibleItems.map(({ href, label, Icon }) => {
-        const active = href === "/" ? pathname === "/" || pathname.startsWith("/events") || pathname.startsWith("/e/") : pathname.startsWith(href);
+      {items.map(({ href, label, Icon }) => {
+        let active: boolean;
+        if (label === "Today") {
+          active = todayHref !== "/" && pathname === todayHref;
+        } else if (href === "/") {
+          active = pathname === "/" || ((pathname.startsWith("/events") || pathname.startsWith("/e/")) && pathname !== todayHref);
+        } else {
+          active = pathname.startsWith(href);
+        }
         return (
           <Link
-            key={href}
+            key={label}
             href={href}
             className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-3 text-xs font-medium transition-colors active:bg-surface-alt ${
               active ? "text-sky-600 dark:text-sky-400" : "text-stone-400 dark:text-muted-light"

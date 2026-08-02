@@ -2,6 +2,16 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.5.0] — 2026-08-02
+
+### Added
+- Full tournament flow: admin team formation (tap tiles), locked teams, match formats (single elimination with auto-advancing bracket, round robin, manual), start button, score entry, tabbed Matches/Standings/Players view with champion banner.
+- Skill levels (1–5): asked at registration, editable in Profile, admin-editable in Users (shown there, hidden on event pages).
+- User editing + disable; event editing; "Today" bottom-nav shortcut to your checked-in event.
+
+### Changed
+- Match creation is now team-based and only available after teams are locked.
+
 ## [0.4.1] — 2026-08-01
 
 ### Fixed

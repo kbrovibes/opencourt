@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 
 export type EventStatus = "draft" | "live" | "completed" | "cancelled";
 export type EventType = "singles" | "doubles";
+export type EventStage = "roster" | "team_formation" | "teams_locked" | "matches_set" | "started";
+export type MatchFormat = "manual" | "single_elim" | "round_robin";
 
 export interface OcEvent {
   id: string;
@@ -11,6 +13,8 @@ export interface OcEvent {
   event_type: EventType;
   max_players: number;
   status: EventStatus;
+  stage: EventStage;
+  match_format: MatchFormat | null;
   checkin_opens_at: string | null;
   short_code: string;
   location: string | null;
@@ -18,6 +22,15 @@ export interface OcEvent {
   created_by: string | null;
   created_at: string;
 }
+
+/** Legal stage transitions (admin-driven). */
+export const STAGE_TRANSITIONS: Record<EventStage, EventStage[]> = {
+  roster: ["team_formation"],
+  team_formation: ["roster", "teams_locked"],
+  teams_locked: ["team_formation", "matches_set"],
+  matches_set: ["teams_locked", "started"],
+  started: ["matches_set"],
+};
 
 export interface RosterEntry {
   id: string;               // oc_event_players row id
@@ -30,7 +43,7 @@ export interface RosterEntry {
 }
 
 const EVENT_COLS =
-  "id, name, event_date, start_time, event_type, max_players, status, checkin_opens_at, short_code, location, notes, created_by, created_at";
+  "id, name, event_date, start_time, event_type, max_players, status, stage, match_format, checkin_opens_at, short_code, location, notes, created_by, created_at";
 
 // Unambiguous alphabet for short codes (no 0/O, 1/I/L)
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -201,6 +214,26 @@ export async function setPartner(eventId: string, playerId: string, partnerId: s
     .eq("event_id", eventId)
     .eq("player_id", playerId);
   if (error) throw error;
+}
+
+/**
+ * The live event this player is currently checked into, preferring today's date.
+ * Powers the "Today" bottom-nav shortcut.
+ */
+export async function getMyCheckedInLiveEventId(playerId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("oc_event_players")
+    .select("event_id, oc_events!inner(id, status, event_date)")
+    .eq("player_id", playerId)
+    .not("checked_in_at", "is", null)
+    .is("withdrawn_at", null)
+    .eq("oc_events.status", "live");
+  if (!data || data.length === 0) return null;
+  // "Today" in IST (club timezone)
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const rows = data as unknown as { event_id: string; oc_events: { event_date: string } }[];
+  const todayRow = rows.find((r) => r.oc_events.event_date === today);
+  return (todayRow ?? rows[0]).event_id;
 }
 
 /** Check-in window: event must be live, and past checkin_opens_at when set. */

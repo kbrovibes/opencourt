@@ -5,21 +5,34 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { useNavigationLoader } from "@/components/NavigationLoader";
 import ThemeToggle from "@/components/ThemeToggle";
+import SkillDots from "@/components/SkillDots";
 
 interface Props {
   name: string;
   email: string;
   isAdmin: boolean;
   version: string;
+  skill: number | null;
 }
 
-export default function ProfileClient({ name, email, isAdmin, version }: Props) {
+export default function ProfileClient({ name, email, isAdmin, version, skill }: Props) {
   const router = useRouter();
   const { startLoading } = useNavigationLoader();
   const [editing, setEditing] = useState(false);
   const [newName, setNewName] = useState(name);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mySkill, setMySkill] = useState<number | null>(skill);
+
+  async function updateSkill(level: number) {
+    setMySkill(level);
+    await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skill_level: level }),
+    });
+    router.refresh();
+  }
 
   const initials = name
     .split(" ")
@@ -93,6 +106,15 @@ export default function ProfileClient({ name, email, isAdmin, version }: Props) 
             )}
           </div>
         )}
+      </div>
+
+      {/* Skill */}
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-light px-1">Skill level</span>
+        <div className="flex items-center justify-between bg-surface rounded-xl border border-border-light dark:border-border px-4 py-3">
+          <span className="text-sm text-text">{mySkill ? `${mySkill} / 5` : "Not set"}</span>
+          <SkillDots level={mySkill} onChange={updateSkill} size="md" />
+        </div>
       </div>
 
       {/* Theme */}

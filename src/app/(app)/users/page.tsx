@@ -15,7 +15,7 @@ export default async function UsersPage({
   if (!player?.isAdmin) redirect("/");
 
   const { event: eventParam } = await searchParams;
-  const [events, players] = await Promise.all([listEvents(true), listPlayers()]);
+  const [events, players] = await Promise.all([listEvents(true), listPlayers(true)]);
   const openEvents = events.filter((e) => e.status === "live" || e.status === "draft");
 
   let selected: OcEvent | null = null;
@@ -31,7 +31,15 @@ export default async function UsersPage({
     <UsersAdminClient
       openEvents={openEvents.map((e) => ({ id: e.id, name: e.name, event_date: e.event_date, status: e.status }))}
       selectedEventId={selected?.id ?? null}
-      players={players.map((p) => ({ id: p.id, name: p.name, email: p.email, linked: !!p.user_id }))}
+      players={players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        linked: !!p.user_id,
+        skill: p.skill_level,
+        isAdmin: p.is_admin,
+        disabled: p.disabled,
+      }))}
       roster={roster.map((r) => ({
         player_id: r.player_id,
         checked_in_at: r.checked_in_at,

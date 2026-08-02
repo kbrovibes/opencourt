@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import SkillDots from "@/components/SkillDots";
 
 interface EventOpt {
   id: string;
@@ -14,7 +15,10 @@ interface PlayerRow {
   id: string;
   name: string;
   email: string | null;
-  linked: boolean; // has a login (user_id set)
+  linked: boolean;
+  skill: number | null;
+  isAdmin: boolean;
+  disabled: boolean;
 }
 
 interface RosterRow {
@@ -33,13 +37,69 @@ interface Props {
 const inputCls =
   "w-full px-3.5 py-2.5 bg-surface border border-stone-300 dark:border-border rounded-lg text-sm text-text placeholder:text-muted-light focus:outline-none focus:ring-2 focus:ring-sky-500";
 
+function EditPanel({ player, onDone, onError }: { player: PlayerRow; onDone: () => void; onError: (e: string) => void }) {
+  const [name, setName] = useState(player.name);
+  const [email, setEmail] = useState(player.email ?? "");
+  const [skill, setSkill] = useState<number | null>(player.skill);
+  const [saving, setSaving] = useState(false);
+
+  async function save(extra: Record<string, unknown> = {}) {
+    setSaving(true);
+    const res = await fetch(`/api/players/${player.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email: email.trim() || null, skill_level: skill, ...extra }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      onError(data.error ?? "Failed to save");
+      return;
+    }
+    onDone();
+  }
+
+  return (
+    <div className="px-4 py-3 bg-surface-alt/60 flex flex-col gap-2 border-t border-border-light dark:border-border">
+      <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
+      <input className={inputCls} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (links login)" />
+      <div className="flex items-center justify-between px-1">
+        <span className="text-xs font-semibold text-muted-light">Skill</span>
+        <SkillDots level={skill} onChange={setSkill} size="md" />
+      </div>
+      <div className="flex gap-2 mt-1">
+        <button
+          onClick={() => save()}
+          disabled={saving}
+          className="flex-1 py-2 bg-stone-900 dark:bg-sky-600 text-white rounded-lg text-xs font-semibold disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={() => save({ disabled: !player.disabled })}
+          disabled={saving}
+          className={`py-2 px-3 rounded-lg text-xs font-semibold disabled:opacity-50 ${
+            player.disabled
+              ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400"
+              : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
+          }`}
+        >
+          {player.disabled ? "Re-enable" : "Disable"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function UsersAdminClient({ openEvents, selectedEventId, players, roster }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+  const [showDisabled, setShowDisabled] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [bulkText, setBulkText] = useState("");
@@ -47,18 +107,19 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
   const [adding, setAdding] = useState(false);
 
   const rosterMap = useMemo(() => new Map(roster.map((r) => [r.player_id, r])), [roster]);
+  const disabledCount = players.filter((p) => p.disabled).length;
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    const list = q ? players.filter((p) => p.name.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q)) : players;
-    // Checked-in first, then registered, then the rest, alphabetical within groups
+    let list = players.filter((p) => (showDisabled ? p.disabled : !p.disabled));
+    if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q));
     return [...list].sort((a, b) => {
       const ra = rosterMap.get(a.id);
       const rb = rosterMap.get(b.id);
       const rank = (r?: RosterRow) => (r?.checked_in_at ? 0 : r ? 1 : 2);
       return rank(ra) - rank(rb) || a.name.localeCompare(b.name);
     });
-  }, [players, filter, rosterMap]);
+  }, [players, filter, rosterMap, showDisabled]);
 
   const checkedInCount = roster.filter((r) => r.checked_in_at).length;
 
@@ -194,7 +255,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
       {/* Search */}
       <input
         className={inputCls}
-        placeholder={`Search ${players.length} users…`}
+        placeholder={`Search ${players.length - disabledCount} users…`}
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
       />
@@ -202,71 +263,100 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
       {/* Player list */}
       <div className="bg-surface rounded-xl border border-border-light dark:border-border divide-y divide-border-light dark:divide-border">
         {filtered.length === 0 && (
-          <p className="px-4 py-3 text-sm text-muted">No users found.</p>
+          <p className="px-4 py-3 text-sm text-muted">
+            {showDisabled ? "No disabled users." : "No users found."}
+          </p>
         )}
         {filtered.map((p) => {
           const r = rosterMap.get(p.id);
           const busy = busyId === p.id;
           return (
-            <div key={p.id} className="flex items-center justify-between gap-2 px-4 py-2.5">
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-heading truncate">
-                  {p.name}
-                  {!p.linked && <span className="ml-1.5 text-[10px] font-semibold text-muted-lighter uppercase">manual</span>}
-                </span>
-                {r && (
-                  <span className={`text-[11px] ${r.checked_in_at ? "text-green-600 dark:text-green-400" : r.waitlisted ? "text-amber-600 dark:text-amber-400" : "text-muted-light"}`}>
-                    {r.checked_in_at ? "✓ Checked in" : r.waitlisted ? "Waitlist" : "Registered"}
+            <div key={p.id}>
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5">
+                <div className="flex flex-col min-w-0">
+                  <span className={`text-sm font-medium truncate flex items-center gap-1.5 ${p.disabled ? "text-muted-light line-through" : "text-heading"}`}>
+                    {p.name}
+                    <SkillDots level={p.skill} />
+                    {!p.linked && <span className="text-[10px] font-semibold text-muted-lighter uppercase no-underline">manual</span>}
                   </span>
-                )}
-              </div>
-
-              {selectedEventId && (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {r?.checked_in_at ? (
-                    <button
-                      onClick={() => toggleCheckin(p.id, false)}
-                      disabled={busy}
-                      className="px-3 py-1.5 bg-surface-alt text-text rounded-lg text-xs font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
-                    >
-                      Undo
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => toggleCheckin(p.id, true)}
-                        disabled={busy}
-                        className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-500 disabled:opacity-50"
-                      >
-                        Check in
-                      </button>
-                      {r ? (
-                        <button
-                          onClick={() => toggleRegister(p.id, true)}
-                          disabled={busy}
-                          className="px-2 py-1.5 text-red-500 dark:text-red-400 rounded-lg text-xs font-semibold hover:bg-surface-alt disabled:opacity-50"
-                          title="Withdraw"
-                        >
-                          ✕
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => toggleRegister(p.id, false)}
-                          disabled={busy}
-                          className="px-2.5 py-1.5 bg-surface-alt text-text rounded-lg text-xs font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
-                          title="Register without check-in"
-                        >
-                          Reg
-                        </button>
-                      )}
-                    </>
+                  {r && (
+                    <span className={`text-[11px] ${r.checked_in_at ? "text-green-600 dark:text-green-400" : r.waitlisted ? "text-amber-600 dark:text-amber-400" : "text-muted-light"}`}>
+                      {r.checked_in_at ? "✓ Checked in" : r.waitlisted ? "Waitlist" : "Registered"}
+                    </span>
                   )}
                 </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {selectedEventId && !p.disabled && (
+                    r?.checked_in_at ? (
+                      <button
+                        onClick={() => toggleCheckin(p.id, false)}
+                        disabled={busy}
+                        className="px-3 py-1.5 bg-surface-alt text-text rounded-lg text-xs font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
+                      >
+                        Undo
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => toggleCheckin(p.id, true)}
+                          disabled={busy}
+                          className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-500 disabled:opacity-50"
+                        >
+                          Check in
+                        </button>
+                        {r ? (
+                          <button
+                            onClick={() => toggleRegister(p.id, true)}
+                            disabled={busy}
+                            className="px-2 py-1.5 text-red-500 dark:text-red-400 rounded-lg text-xs font-semibold hover:bg-surface-alt disabled:opacity-50"
+                            title="Withdraw"
+                          >
+                            ✕
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => toggleRegister(p.id, false)}
+                            disabled={busy}
+                            className="px-2.5 py-1.5 bg-surface-alt text-text rounded-lg text-xs font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
+                            title="Register without check-in"
+                          >
+                            Reg
+                          </button>
+                        )}
+                      </>
+                    )
+                  )}
+                  <button
+                    onClick={() => setEditId(editId === p.id ? null : p.id)}
+                    className="px-1.5 py-1.5 text-muted hover:text-heading text-sm"
+                    title="Edit user"
+                  >
+                    ✏️
+                  </button>
+                </div>
+              </div>
+              {editId === p.id && (
+                <EditPanel
+                  player={p}
+                  onDone={() => { setEditId(null); router.refresh(); }}
+                  onError={setError}
+                />
               )}
             </div>
           );
         })}
       </div>
+
+      {/* Disabled toggle */}
+      {(disabledCount > 0 || showDisabled) && (
+        <button
+          onClick={() => setShowDisabled((v) => !v)}
+          className="text-xs text-muted-light hover:text-heading self-center"
+        >
+          {showDisabled ? "← Back to active users" : `Show disabled users (${disabledCount})`}
+        </button>
+      )}
     </div>
   );
 }
