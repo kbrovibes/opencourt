@@ -32,12 +32,13 @@ interface Props {
   selectedEventId: string | null;
   players: PlayerRow[];
   roster: RosterRow[];
+  selfId: string;
 }
 
 const inputCls =
   "w-full px-3.5 py-2.5 bg-surface border border-stone-300 dark:border-border rounded-lg text-sm text-text placeholder:text-muted-light focus:outline-none focus:ring-2 focus:ring-sky-500";
 
-function EditPanel({ player, onDone, onError }: { player: PlayerRow; onDone: () => void; onError: (e: string) => void }) {
+function EditPanel({ player, isSelf, onDone, onError }: { player: PlayerRow; isSelf: boolean; onDone: () => void; onError: (e: string) => void }) {
   const [name, setName] = useState(player.name);
   const [email, setEmail] = useState(player.email ?? "");
   const [skill, setSkill] = useState<number | null>(player.skill);
@@ -87,11 +88,24 @@ function EditPanel({ player, onDone, onError }: { player: PlayerRow; onDone: () 
           {player.disabled ? "Re-enable" : "Disable"}
         </button>
       </div>
+      {!isSelf && (
+        <button
+          onClick={() => save({ is_admin: !player.isAdmin })}
+          disabled={saving}
+          className={`py-2 rounded-lg text-xs font-semibold disabled:opacity-50 ${
+            player.isAdmin
+              ? "bg-surface text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
+              : "bg-surface text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800"
+          }`}
+        >
+          {player.isAdmin ? "🚫 Revoke admin" : "🛡 Make admin"}
+        </button>
+      )}
     </div>
   );
 }
 
-export default function UsersAdminClient({ openEvents, selectedEventId, players, roster }: Props) {
+export default function UsersAdminClient({ openEvents, selectedEventId, players, roster, selfId }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -277,6 +291,9 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
                   <span className={`text-sm font-medium truncate flex items-center gap-1.5 ${p.disabled ? "text-muted-light line-through" : "text-heading"}`}>
                     {p.name}
                     <SkillDots level={p.skill} />
+                    {p.isAdmin && (
+                      <span className="text-[9px] font-bold tracking-wider uppercase text-red-500/80 dark:text-red-400/80 no-underline">admin</span>
+                    )}
                     {!p.linked && <span className="text-[10px] font-semibold text-muted-lighter uppercase no-underline">manual</span>}
                   </span>
                   {r && (
@@ -339,6 +356,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
               {editId === p.id && (
                 <EditPanel
                   player={p}
+                  isSelf={p.id === selfId}
                   onDone={() => { setEditId(null); router.refresh(); }}
                   onError={setError}
                 />

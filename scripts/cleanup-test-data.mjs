@@ -17,7 +17,7 @@ const TEST_EMAILS = [
   "oc-test-bala@opencourt.test",
 ];
 const TEST_PLAYER_NAMES = ["Manual Mo", "Priya Test", "Ravi Test"];
-const TEST_EVENT_NAMES = ["Saturday Doubles Bash", "Singles Showdown"];
+const TEST_EVENT_NAMES = ["Saturday Doubles Bash", "Singles Showdown", "RR Skill Test", "Zz Fixture Cup"];
 
 // Events (cascades to oc_event_players + oc_matches)
 const { data: events } = await c.from("oc_events").select("id, name").in("name", TEST_EVENT_NAMES);

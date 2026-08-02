@@ -75,12 +75,9 @@ Login (password), player auto-creation, everyone-admin, event create (doubles, m
 
 **Bug found & fixed during testing (v0.4.1):** password sign-in used `router.push`, which raced the auth cookies and bounced to /welcome, losing the deep link. Now a full navigation.
 
-## Test data (left in place so you can poke around)
+## Test data
 
-- Events: *Saturday Doubles Bash* (`/e/5UUQXU`), *Singles Showdown* (`/e/SNGL01`)
-- Auth users: oc-test-{admin,arya,bala}@opencourt.test / `opencourt-test-1234`
-- Manual players: Manual Mo, Priya Test, Ravi Test
-- Wipe it all: `SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/cleanup-test-data.mjs`
+All validation fixtures (test events, players, and auth accounts) were removed on 2026-08-02 before the repo went public.
 
 ## Deferred (candidates for next session)
 

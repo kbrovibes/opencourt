@@ -40,6 +40,7 @@ export default async function UsersPage({
         isAdmin: p.is_admin,
         disabled: p.disabled,
       }))}
+      selfId={player.id}
       roster={roster.map((r) => ({
         player_id: r.player_id,
         checked_in_at: r.checked_in_at,

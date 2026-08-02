@@ -70,7 +70,6 @@ Same four vars as snobaddy (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_P
 ```bash
 npm install && npm run dev   # http://localhost:3000
 ```
-Test accounts (until cleanup): oc-test-{admin,arya,bala}@opencourt.test / opencourt-test-1234.
-Wipe test data: `SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/cleanup-test-data.mjs`.
+Validation test data was removed after each round (`scripts/cleanup-test-data.mjs`); create fresh throwaway users for testing.
 
 See DECISIONS.md for the overnight-build decision log.
