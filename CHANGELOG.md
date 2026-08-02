@@ -2,6 +2,15 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.7.0] — 2026-08-02
+
+### Added
+- Admins can grant and revoke admin rights from the user edit panel (self-demotion blocked); admins show an "admin" tag in the Users list.
+- Public README with the origin story, differentiators, and mobile screenshots.
+
+### Security
+- All validation/demo accounts and fixtures purged before the repo went public; docs scrubbed of test credentials.
+
 ## [0.6.2] — 2026-08-02
 
 ### Changed
