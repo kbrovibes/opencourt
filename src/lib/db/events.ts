@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 export type EventStatus = "draft" | "live" | "completed" | "cancelled";
 export type EventType = "singles" | "doubles";
 export type EventStage = "roster" | "team_formation" | "teams_locked" | "matches_set" | "started";
-export type MatchFormat = "manual" | "single_elim" | "round_robin";
+export type MatchFormat = "manual" | "single_elim" | "round_robin" | "fixed_rounds";
 
 export interface OcEvent {
   id: string;
@@ -60,6 +60,7 @@ export async function listEvents(includeDrafts: boolean): Promise<OcEvent[]> {
   let query = supabase
     .from("oc_events")
     .select(EVENT_COLS)
+    .is("deleted_at", null)
     .order("event_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (!includeDrafts) {
@@ -71,7 +72,12 @@ export async function listEvents(includeDrafts: boolean): Promise<OcEvent[]> {
 }
 
 export async function getEvent(id: string): Promise<OcEvent | null> {
-  const { data } = await supabase.from("oc_events").select(EVENT_COLS).eq("id", id).maybeSingle();
+  const { data } = await supabase
+    .from("oc_events")
+    .select(EVENT_COLS)
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
   return data;
 }
 
@@ -80,6 +86,7 @@ export async function getEventByCode(code: string): Promise<OcEvent | null> {
     .from("oc_events")
     .select(EVENT_COLS)
     .ilike("short_code", code)
+    .is("deleted_at", null)
     .maybeSingle();
   return data;
 }
@@ -116,6 +123,15 @@ export async function updateEvent(
   fields: Partial<Omit<OcEvent, "id" | "short_code" | "created_at" | "created_by">>
 ): Promise<void> {
   const { error } = await supabase.from("oc_events").update(fields).eq("id", id);
+  if (error) throw error;
+}
+
+/** Soft delete: hides the event everywhere; recoverable by clearing deleted_at in the DB. */
+export async function softDeleteEvent(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("oc_events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -227,7 +243,8 @@ export async function getMyCheckedInLiveEventId(playerId: string): Promise<strin
     .eq("player_id", playerId)
     .not("checked_in_at", "is", null)
     .is("withdrawn_at", null)
-    .eq("oc_events.status", "live");
+    .eq("oc_events.status", "live")
+    .is("oc_events.deleted_at", null);
   if (!data || data.length === 0) return null;
   // "Today" in IST (club timezone)
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });

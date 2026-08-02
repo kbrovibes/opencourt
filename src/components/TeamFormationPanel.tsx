@@ -19,18 +19,21 @@ interface Props {
   eventId: string;
   eventType: "singles" | "doubles";
   checkedIn: PlayerTile[];
-  teams: Team[];
+  teams: Team[]; // saved teams
 }
 
 export default function TeamFormationPanel({ eventId, eventType, checkedIn, teams }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
+  const [pending, setPending] = useState<string[][]>([]); // local, unsaved lineups
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const teamSize = eventType === "doubles" ? 2 : 1;
-  const inTeam = new Set(teams.flatMap((t) => t.playerIds));
-  const free = checkedIn.filter((p) => !inTeam.has(p.id));
+  const nameOf = new Map(checkedIn.map((p) => [p.id, p.name]));
+  const inSaved = new Set(teams.flatMap((t) => t.playerIds));
+  const inPending = new Set(pending.flat());
+  const free = checkedIn.filter((p) => !inSaved.has(p.id) && !inPending.has(p.id));
 
   async function api(body: Record<string, unknown>) {
     setBusy(true);
@@ -43,24 +46,34 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong");
+      setBusy(false);
+      return false;
     }
     setBusy(false);
     router.refresh();
+    return true;
   }
 
-  async function tap(playerId: string) {
-    if (busy) return;
+  // Pure client-side: tap tiles to build lineups locally, nothing hits the server
+  function tap(playerId: string) {
+    setError(null);
     if (selected.includes(playerId)) {
       setSelected(selected.filter((s) => s !== playerId));
       return;
     }
     const next = [...selected, playerId];
     if (next.length === teamSize) {
+      setPending([...pending, next]);
       setSelected([]);
-      await api({ action: "create", player_ids: next });
     } else {
       setSelected(next);
     }
+  }
+
+  async function saveAll() {
+    if (pending.length === 0) return;
+    const ok = await api({ action: "create_bulk", teams: pending });
+    if (ok) setPending([]);
   }
 
   return (
@@ -85,8 +98,7 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
               <button
                 key={p.id}
                 onClick={() => tap(p.id)}
-                disabled={busy}
-                className={`px-3.5 py-2.5 rounded-xl text-sm font-semibold border transition-all disabled:opacity-50 ${
+                className={`px-3.5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
                   sel
                     ? "bg-sky-600 text-white border-sky-600 scale-105 shadow-md"
                     : "bg-surface-alt text-heading border-border-light dark:border-border hover:border-sky-400"
@@ -99,11 +111,41 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
         </div>
       )}
 
-      {/* Formed teams */}
+      {/* Pending (unsaved) lineups */}
+      {pending.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+            Not saved yet ({pending.length})
+          </span>
+          {pending.map((t, i) => (
+            <div key={t.join("+")} className="flex items-center justify-between px-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-700/40 rounded-lg">
+              <span className="text-sm font-medium text-heading">
+                {t.map((pid) => nameOf.get(pid) ?? "?").join(" & ")}
+              </span>
+              <button
+                onClick={() => setPending(pending.filter((_, j) => j !== i))}
+                className="text-red-500 dark:text-red-400 text-sm font-bold px-1.5"
+                title="Remove lineup"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={saveAll}
+            disabled={busy}
+            className="mt-1 w-full py-2.5 bg-stone-900 dark:bg-sky-600 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {busy ? "Saving…" : `💾 Save ${pending.length} team${pending.length > 1 ? "s" : ""}`}
+          </button>
+        </div>
+      )}
+
+      {/* Saved teams */}
       {teams.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-light">
-            Teams ({teams.length})
+            Saved teams ({teams.length})
           </span>
           {teams.map((t) => (
             <div
@@ -131,7 +173,7 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2">
-        {eventType === "doubles" && (
+        {eventType === "doubles" ? (
           <button
             onClick={() => api({ action: "from_pairs" })}
             disabled={busy}
@@ -139,8 +181,7 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
           >
             🤝 Use confirmed pairs
           </button>
-        )}
-        {eventType === "singles" && (
+        ) : (
           <button
             onClick={() => api({ action: "from_pairs" })}
             disabled={busy}
@@ -155,10 +196,15 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
             disabled={busy}
             className="px-3 py-2 text-red-500 dark:text-red-400 rounded-lg text-xs font-semibold hover:bg-surface-alt disabled:opacity-50"
           >
-            Clear all
+            Clear saved
           </button>
         )}
       </div>
+      {pending.length > 0 && (
+        <p className="text-[11px] text-amber-600 dark:text-amber-400">
+          ⚠️ Save your lineups before finalizing — only saved teams count.
+        </p>
+      )}
     </div>
   );
 }

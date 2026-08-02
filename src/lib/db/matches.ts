@@ -206,13 +206,72 @@ export async function generateSingleElim(eventId: string, matchType: EventType, 
     .is("team2_id", null);
 }
 
-/** Round robin: every team plays every other team once. */
+/** Round robin: every team plays every other team once (round = schedule round via circle method). */
 export async function generateRoundRobin(eventId: string, matchType: EventType, teams: OcTeam[]): Promise<void> {
+  await generateFixedRounds(eventId, matchType, teams, teams.length - 1);
+}
+
+/**
+ * Fixed rounds (limited round robin): every team plays exactly `roundsPerTeam`
+ * matches (capped at teams-1), scheduled with the circle method so nobody
+ * plays twice in a round. Odd team counts sit out one round at a time.
+ * These are group matches: round is set, bracket_pos stays null (no bracket).
+ */
+export async function generateFixedRounds(
+  eventId: string,
+  matchType: EventType,
+  teams: OcTeam[],
+  roundsPerTeam: number
+): Promise<void> {
   if (teams.length < 2) throw new Error("Need at least 2 teams");
-  for (let i = 0; i < teams.length; i++) {
-    for (let j = i + 1; j < teams.length; j++) {
-      await createTeamMatch(eventId, matchType, teams[i], teams[j]);
+  const rounds = Math.max(1, Math.min(roundsPerTeam, teams.length - 1));
+
+  const arr: (OcTeam | null)[] = [...teams];
+  if (arr.length % 2 === 1) arr.push(null); // bye slot
+  const n = arr.length;
+
+  for (let r = 0; r < rounds; r++) {
+    for (let i = 0; i < n / 2; i++) {
+      const a = arr[i];
+      const b = arr[n - 1 - i];
+      if (a && b) await createTeamMatch(eventId, matchType, a, b, r + 1, null);
     }
+    // rotate all but the first
+    arr.splice(1, 0, arr.pop()!);
+  }
+}
+
+/**
+ * Playoffs from current standings (for round-robin / fixed-rounds events):
+ * top 2 → a final; top 4 → semifinals (1v4, 2v3) + TBD final.
+ * Knockout rounds are appended after the group rounds so winners auto-advance.
+ */
+export async function generatePlayoffs(
+  eventId: string,
+  matchType: EventType,
+  teams: OcTeam[],
+  orderedTeamIds: string[],
+  size: 2 | 4
+): Promise<void> {
+  const byId = new Map(teams.map((t) => [t.id, t]));
+  const top = orderedTeamIds.slice(0, size).map((id) => byId.get(id)).filter(Boolean) as OcTeam[];
+  if (top.length < size) throw new Error(`Need ${size} teams with completed matches for playoffs`);
+
+  const { data } = await supabase
+    .from("oc_matches")
+    .select("round")
+    .eq("event_id", eventId)
+    .not("round", "is", null)
+    .order("round", { ascending: false })
+    .limit(1);
+  const base = (data?.[0]?.round ?? 0) + 1;
+
+  if (size === 2) {
+    await createTeamMatch(eventId, matchType, top[0], top[1], base, 0);
+  } else {
+    await createTeamMatch(eventId, matchType, top[0], top[3], base, 0);
+    await createTeamMatch(eventId, matchType, top[1], top[2], base, 1);
+    await createTeamMatch(eventId, matchType, null, null, base + 1, 0); // final, TBD
   }
 }
 

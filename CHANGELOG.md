@@ -2,6 +2,19 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.6.0] — 2026-08-02
+
+### Added
+- Fixed-rounds format (matches per team input) + playoffs generator (top 2 / top 4) once group play completes.
+- Overview tab with visual bracket, results matrix, progress bar, and podium.
+- Completed events show a summary banner: champions, runners-up, and stats.
+- Event delete (recoverable), batched team saving with one Save button.
+
+### Fixed
+- Dark-mode dropdowns/date pickers no longer render white.
+- Knockout round names no longer mislabel group rounds; byes are labeled explicitly.
+- Skill level defaults to 3 for everyone.
+
 ## [0.5.0] — 2026-08-02
 
 ### Added

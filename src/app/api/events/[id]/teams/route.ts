@@ -43,6 +43,29 @@ export async function POST(
         const team = await createTeam(id, ids[0], ids[1] ?? null);
         return NextResponse.json({ team });
       }
+      case "create_bulk": {
+        const teamsInput: string[][] = body.teams ?? [];
+        const expected = event.event_type === "doubles" ? 2 : 1;
+        if (!Array.isArray(teamsInput) || teamsInput.length === 0) {
+          return NextResponse.json({ error: "No teams to save" }, { status: 400 });
+        }
+        const flat = teamsInput.flat();
+        if (teamsInput.some((t) => t.length !== expected) || new Set(flat).size !== flat.length) {
+          return NextResponse.json({ error: "Invalid team lineup" }, { status: 400 });
+        }
+        const roster = await getRoster(event);
+        for (const pid of flat) {
+          if (!roster.find((r) => r.player_id === pid)?.checked_in_at) {
+            return NextResponse.json({ error: "All team members must be checked in" }, { status: 400 });
+          }
+        }
+        let created = 0;
+        for (const t of teamsInput) {
+          await createTeam(id, t[0], t[1] ?? null);
+          created++;
+        }
+        return NextResponse.json({ created });
+      }
       case "delete":
         if (!body.team_id) return NextResponse.json({ error: "team_id required" }, { status: 400 });
         await deleteTeam(body.team_id);

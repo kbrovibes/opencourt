@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
-import { getEvent, updateEvent } from "@/lib/db/events";
+import { getEvent, softDeleteEvent, updateEvent } from "@/lib/db/events";
 
 const EDITABLE = new Set([
   "name", "event_date", "start_time", "event_type", "max_players",
@@ -29,6 +29,26 @@ export async function PATCH(
 
   try {
     await updateEvent(id, fields);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
+}
+
+/** Soft delete — the event vanishes from the app but stays in the DB (deleted_at). */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { response } = await requireAdmin();
+  if (response) return response;
+
+  const { id } = await params;
+  const event = await getEvent(id);
+  if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+  try {
+    await softDeleteEvent(id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

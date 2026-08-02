@@ -37,8 +37,8 @@ export default function MyEventActions({ eventId, registered, checkedIn, waitlis
   }
 
   async function register() {
-    if (mySkill === null && skill !== null) {
-      // Save skill picked during registration
+    if (skill !== null && skill !== mySkill) {
+      // Save skill picked/changed during registration
       await fetch("/api/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -50,10 +50,10 @@ export default function MyEventActions({ eventId, registered, checkedIn, waitlis
 
   return (
     <div className="flex flex-col gap-2">
-      {/* First-time skill prompt, shown with the register button */}
-      {!registered && mySkill === null && (
+      {/* Skill check shown with the register button (preset to current level) */}
+      {!registered && (
         <div className="flex items-center justify-between bg-surface rounded-xl border border-border-light dark:border-border px-4 py-2.5">
-          <span className="text-sm text-text">Your skill level <span className="text-muted-light text-xs">(optional)</span></span>
+          <span className="text-sm text-text">Your skill level</span>
           <SkillDots level={skill} onChange={setSkill} size="md" />
         </div>
       )}

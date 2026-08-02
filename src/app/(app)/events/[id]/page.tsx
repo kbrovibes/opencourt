@@ -15,6 +15,7 @@ import TeamFormationPanel from "@/components/TeamFormationPanel";
 import StagePanel from "@/components/StagePanel";
 import EventTabs from "@/components/EventTabs";
 import BackButton from "@/components/BackButton";
+import { BracketView, MatchProgress, Podium, ResultsMatrix } from "@/components/TournamentVisuals";
 import NavLink from "@/components/NavLink";
 
 export const dynamic = "force-dynamic";
@@ -49,17 +50,27 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const teamOpts = teams.map((t) => ({ id: t.id, seed: t.seed, label: teamLabel(t), playerIds: [t.player1_id, t.player2_id].filter(Boolean) as string[] }));
   const labelByTeam = new Map(teamOpts.map((t) => [t.id, t.label]));
 
-  const totalRounds = matches.reduce((max, m) => Math.max(max, m.round ?? 0), 0);
   const standings = computeTeamStandings(matches);
 
-  // Champion: single elim final completed
+  // Champion / runner-up: winner of the last knockout round (single elim or playoffs)
+  const knockout = matches.filter((m) => m.round !== null && m.bracket_pos !== null);
+  const maxKR = knockout.reduce((acc, m) => Math.max(acc, m.round ?? 0), 0);
   let champion: string | null = null;
-  if (event.match_format === "single_elim" && totalRounds > 0) {
-    const final = matches.find((m) => m.round === totalRounds && m.status === "completed");
-    if (final?.winning_team) {
-      const winnerId = final.winning_team === 1 ? final.team1_id : final.team2_id;
-      champion = winnerId ? labelByTeam.get(winnerId) ?? null : null;
+  let runnerUp: string | null = null;
+  if (maxKR > 0) {
+    const finals = knockout.filter((m) => m.round === maxKR);
+    const final = finals.length === 1 ? finals[0] : null;
+    if (final?.status === "completed" && final.winning_team) {
+      const winId = final.winning_team === 1 ? final.team1_id : final.team2_id;
+      const loseId = final.winning_team === 1 ? final.team2_id : final.team1_id;
+      champion = winId ? labelByTeam.get(winId) ?? null : null;
+      runnerUp = loseId ? labelByTeam.get(loseId) ?? null : null;
     }
+  }
+  // Group-only events: champion once every match is done
+  if (!champion && maxKR === 0 && matches.length > 0 && matches.every((m) => m.status === "completed") && standings.length > 0) {
+    champion = labelByTeam.get(standings[0].teamId) ?? null;
+    runnerUp = standings[1] ? labelByTeam.get(standings[1].teamId) ?? null : null;
   }
 
   // Mutual partner display
@@ -155,6 +166,22 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     </section>
   );
 
+  const overviewSection = (
+    <div className="flex flex-col gap-4">
+      <MatchProgress matches={matches} />
+      {champion && (
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3 text-center">
+          <p className="text-2xl leading-none mb-1">🏆</p>
+          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Champions: {champion}</p>
+          {runnerUp && <p className="text-xs text-amber-600/80 dark:text-amber-500/80 mt-0.5">Runners-up: {runnerUp}</p>}
+        </div>
+      )}
+      <BracketView matches={matches} teams={teamOpts} />
+      <ResultsMatrix matches={matches} teams={teamOpts} />
+      {standings.length > 1 && <Podium standings={standings} labelOf={labelByTeam} />}
+    </div>
+  );
+
   const matchesSection = (
     <MatchesSection
       eventId={event.id}
@@ -163,13 +190,43 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       isAdmin={player.isAdmin}
       matches={matches}
       teams={teamOpts}
-      totalRounds={totalRounds}
     />
   );
 
   return (
     <div className="max-w-md mx-auto px-4 py-5 flex flex-col gap-5">
       <BackButton href="/" label="All events" />
+
+      {/* Closed-event summary */}
+      {event.status === "completed" && (
+        <div className="bg-surface rounded-xl border border-amber-300 dark:border-amber-700/60 px-4 py-4 flex flex-col gap-3">
+          <div className="text-center">
+            <p className="text-3xl leading-none mb-1.5">🏆</p>
+            <p className="text-base font-bold text-heading">
+              {champion ?? (standings[0] ? labelByTeam.get(standings[0].teamId) : null) ?? "Event completed"}
+            </p>
+            {champion && <p className="text-[11px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-semibold">Champions</p>}
+            {(runnerUp ?? (standings[1] && labelByTeam.get(standings[1].teamId))) && (
+              <p className="text-xs text-muted mt-1">
+                🥈 {runnerUp ?? labelByTeam.get(standings[1].teamId)}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { emoji: "👥", val: checkedIn.length, label: "Players" },
+              { emoji: "🎯", val: matches.filter((m) => m.status === "completed").length, label: "Matches" },
+              { emoji: "🏸", val: matches.reduce((sum, m) => sum + (m.team1_score ?? 0) + (m.team2_score ?? 0), 0), label: "Points" },
+            ].map(({ emoji, val, label }) => (
+              <div key={label} className="bg-surface-alt rounded-lg py-2 flex flex-col items-center gap-0.5">
+                <span className="text-base leading-none">{emoji}</span>
+                <span className="text-lg font-bold text-heading leading-none">{val}</span>
+                <span className="text-[10px] font-semibold text-muted-light">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Event info card */}
       <div className="bg-surface rounded-xl border border-border-light dark:border-border px-4 py-4 flex flex-col gap-2">
@@ -208,6 +265,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           matchFormat={event.match_format}
           teamsCount={teams.length}
           hasCompletedMatches={matches.some((m) => m.status === "completed")}
+          hasKnockout={knockout.length > 0}
+          groupPending={matches.filter((m) => m.bracket_pos === null && m.status !== "completed").length}
         />
       )}
 
@@ -251,8 +310,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
       {inTournament ? (
         <EventTabs
-          initial={event.stage === "started" ? "matches" : "matches"}
+          initial={event.stage === "started" ? "overview" : "matches"}
           tabs={[
+            { key: "overview", label: "Overview", content: overviewSection },
             { key: "matches", label: `Matches`, content: matchesSection },
             { key: "standings", label: "Standings", content: standingsSection },
             { key: "players", label: "Players", content: <div className="flex flex-col gap-4">{teamsSection}{rosterSection}</div> },

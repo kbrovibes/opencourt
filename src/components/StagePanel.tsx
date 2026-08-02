@@ -11,19 +11,23 @@ interface Props {
   matchFormat: MatchFormat | null;
   teamsCount: number;
   hasCompletedMatches: boolean;
+  hasKnockout: boolean;       // any bracket matches exist (playoffs or knockout)
+  groupPending: number;       // pending group matches
 }
 
 const FORMATS: { value: MatchFormat; label: string; hint: string }[] = [
-  { value: "single_elim", label: "🏆 Single elimination", hint: "Knockout bracket — losers are out, winners advance to the final" },
+  { value: "fixed_rounds", label: "🔄 Fixed rounds", hint: "Everyone plays the same number of matches; add playoffs at the end" },
   { value: "round_robin", label: "🔁 Round robin", hint: "Every team plays every other team; best record wins" },
+  { value: "single_elim", label: "🏆 Single elimination", hint: "Knockout bracket — losers are out, winners advance to the final" },
   { value: "manual", label: "✍️ Manual", hint: "You create each team-vs-team match yourself" },
 ];
 
-export default function StagePanel({ eventId, stage, eventType, matchFormat, teamsCount, hasCompletedMatches }: Props) {
+export default function StagePanel({ eventId, stage, eventType, matchFormat, teamsCount, hasCompletedMatches, hasKnockout, groupPending }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [format, setFormat] = useState<MatchFormat>(matchFormat ?? "single_elim");
+  const [format, setFormat] = useState<MatchFormat>(matchFormat ?? "fixed_rounds");
+  const [roundsPerTeam, setRoundsPerTeam] = useState("3");
 
   async function post(path: string, body: Record<string, unknown>) {
     setBusy(true);
@@ -45,6 +49,8 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
 
   const primary = "flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50";
   const secondary = "py-2.5 px-3 rounded-lg text-sm font-semibold bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-50";
+
+  const groupFormat = matchFormat === "round_robin" || matchFormat === "fixed_rounds" || matchFormat === "manual";
 
   return (
     <div className="bg-surface rounded-xl border border-border-light dark:border-border px-4 py-3 flex flex-col gap-2.5">
@@ -94,9 +100,22 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
               </button>
             ))}
           </div>
+          {format === "fixed_rounds" && (
+            <div className="flex items-center justify-between px-1">
+              <label className="text-sm text-text">Matches per team</label>
+              <input
+                type="number"
+                min={1}
+                max={Math.max(1, teamsCount - 1)}
+                value={roundsPerTeam}
+                onChange={(e) => setRoundsPerTeam(e.target.value)}
+                className="w-20 px-2.5 py-1.5 bg-surface-alt border border-stone-300 dark:border-border rounded-lg text-sm text-center text-text focus:outline-none focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
             <button
-              onClick={() => post(`/api/events/${eventId}/generate-matches`, { format })}
+              onClick={() => post(`/api/events/${eventId}/generate-matches`, { format, rounds_per_team: roundsPerTeam })}
               disabled={busy}
               className={`${primary} bg-sky-600 hover:bg-sky-500`}
             >
@@ -120,13 +139,46 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
         </div>
       )}
 
-      {stage === "started" && !hasCompletedMatches && (
-        <button onClick={() => setStage("matches_set")} disabled={busy} className={secondary}>
-          ⏸ Un-start (no scores yet)
-        </button>
-      )}
-      {stage === "started" && hasCompletedMatches && (
-        <p className="text-[11px] text-muted-light">Tournament running — enter scores in the Matches tab.</p>
+      {stage === "started" && (
+        <>
+          {/* Playoffs for group formats once group play is done */}
+          {groupFormat && !hasKnockout && (
+            groupPending === 0 && hasCompletedMatches ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => post(`/api/events/${eventId}/playoffs`, { size: 2 })}
+                  disabled={busy}
+                  className={`${primary} bg-amber-600 hover:bg-amber-500`}
+                >
+                  🏆 Final (top 2)
+                </button>
+                {teamsCount >= 4 && (
+                  <button
+                    onClick={() => post(`/api/events/${eventId}/playoffs`, { size: 4 })}
+                    disabled={busy}
+                    className={`${primary} bg-amber-600 hover:bg-amber-500`}
+                  >
+                    🏆 Semis + Final (top 4)
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-light">
+                {groupPending > 0
+                  ? `${groupPending} group match${groupPending > 1 ? "es" : ""} left — playoffs unlock when they're done.`
+                  : "Enter scores in the Matches tab."}
+              </p>
+            )
+          )}
+          {!groupFormat && (
+            <p className="text-[11px] text-muted-light">Tournament running — enter scores in the Matches tab.</p>
+          )}
+          {!hasCompletedMatches && (
+            <button onClick={() => setStage("matches_set")} disabled={busy} className={secondary}>
+              ⏸ Un-start (no scores yet)
+            </button>
+          )}
+        </>
       )}
 
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}

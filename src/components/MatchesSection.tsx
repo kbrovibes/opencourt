@@ -17,19 +17,12 @@ interface Props {
   isAdmin: boolean;
   matches: OcMatch[];
   teams: TeamOpt[];
-  totalRounds: number;
 }
 
 const selectCls =
   "w-full px-2.5 py-2 bg-surface-alt border border-stone-300 dark:border-border rounded-lg text-sm text-text focus:outline-none focus:ring-2 focus:ring-sky-500";
 
-function roundName(round: number, totalRounds: number): string {
-  const remaining = totalRounds - round;
-  if (remaining === 0) return "🏆 Final";
-  if (remaining === 1) return "Semifinals";
-  if (remaining === 2) return "Quarterfinals";
-  return `Round ${round}`;
-}
+
 
 function ScoreEntry({ match, onDone }: { match: OcMatch; onDone: () => void }) {
   const [t1, setT1] = useState("");
@@ -71,7 +64,7 @@ function ScoreEntry({ match, onDone }: { match: OcMatch; onDone: () => void }) {
   );
 }
 
-export default function MatchesSection({ eventId, stage, matchFormat, isAdmin, matches, teams, totalRounds }: Props) {
+export default function MatchesSection({ eventId, stage, matchFormat, isAdmin, matches, teams }: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [sel1, setSel1] = useState("");
@@ -109,10 +102,40 @@ export default function MatchesSection({ eventId, stage, matchFormat, isAdmin, m
     router.refresh();
   }
 
-  // Group by round (null rounds under "Matches")
+  // Grouping: knockout matches (bracket_pos set) get Final/Semis/QF names;
+  // group-phase matches are plain "Round N"; manual adds are ungrouped.
+  const knockout = matches.filter((m) => m.round !== null && m.bracket_pos !== null);
+  const maxKR = knockout.reduce((acc, m) => Math.max(acc, m.round!), 0);
+  const minKR = knockout.reduce((acc, m) => Math.min(acc, m.round!), Infinity);
+
+  function groupNameOf(m: OcMatch): string {
+    if (m.round === null) return "";
+    if (m.bracket_pos !== null) {
+      const remaining = maxKR - m.round;
+      if (remaining === 0) return "🏆 Final";
+      if (remaining === 1) return "Semifinals";
+      if (remaining === 2) return "Quarterfinals";
+      return `Knockout · Round ${m.round - minKR + 1}`;
+    }
+    return `Round ${m.round}`;
+  }
+
+  // Bye teams: seeded straight into a later knockout round without an earlier match
+  const byeTeams = new Set<string>();
+  for (const m of knockout) {
+    if (m.round === minKR) continue;
+    for (const tid of [m.team1_id, m.team2_id]) {
+      if (!tid) continue;
+      const playedEarlier = knockout.some(
+        (k) => k.round! < m.round! && (k.team1_id === tid || k.team2_id === tid)
+      );
+      if (!playedEarlier) byeTeams.add(tid);
+    }
+  }
+
   const groups = new Map<string, OcMatch[]>();
   for (const m of matches) {
-    const key = m.round !== null ? roundName(m.round, totalRounds) : "";
+    const key = groupNameOf(m);
     const list = groups.get(key) ?? [];
     list.push(m);
     groups.set(key, list);
@@ -122,7 +145,8 @@ export default function MatchesSection({ eventId, stage, matchFormat, isAdmin, m
     const teamId = slot === 1 ? m.team1_id : m.team2_id;
     const score = slot === 1 ? m.team1_score : m.team2_score;
     const winner = m.status === "completed" && m.winning_team === slot;
-    const label = teamId ? labelOf.get(teamId) ?? "?" : "— TBD —";
+    const isBye = teamId && m.status !== "completed" && byeTeams.has(teamId) && m.bracket_pos !== null;
+    const label = teamId ? `${labelOf.get(teamId) ?? "?"}${isBye ? " ⤴ bye" : ""}` : "— TBD —";
     return (
       <p className={`text-sm truncate flex items-center justify-between gap-2 ${winner ? "font-bold text-heading" : teamId ? "text-text" : "text-muted-lighter italic"}`}>
         <span className="truncate">{winner && "✓ "}{label}</span>
