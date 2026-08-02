@@ -67,8 +67,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       runnerUp = loseId ? labelByTeam.get(loseId) ?? null : null;
     }
   }
-  // Group-only events: champion once every match is done
-  if (!champion && maxKR === 0 && matches.length > 0 && matches.every((m) => m.status === "completed") && standings.length > 0) {
+  // Group-only events: champion only once the event itself is completed
+  // (all-group-matches-done alone isn't decisive — admin may still add playoffs)
+  if (!champion && maxKR === 0 && event.status === "completed" && matches.length > 0 && matches.every((m) => m.status === "completed") && standings.length > 0) {
     champion = labelByTeam.get(standings[0].teamId) ?? null;
     runnerUp = standings[1] ? labelByTeam.get(standings[1].teamId) ?? null : null;
   }

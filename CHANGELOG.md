@@ -2,6 +2,12 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.6.1] — 2026-08-02
+
+### Fixed
+- Matches header now says "group rounds" for fixed-rounds events.
+- Group-format champions are only declared once the event is completed.
+
 ## [0.6.0] — 2026-08-02
 
 ### Added

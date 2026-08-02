@@ -1,3 +1,17 @@
+# Round 3 — your 7 fixes/features (2026-08-02, v0.6.x)
+
+All validated on prod with a fresh 12-player / 6-team dry run (fixed rounds ×3 → top-4 playoffs → final → completed banner → delete).
+
+1. **Delete = soft delete.** 🗑 in admin controls, two-tap confirm (red "Really delete?", 4s window). Sets `oc_events.deleted_at`; hidden from every query (lists, /e/ links, Today). Recover in SQL: `update oc_events set deleted_at = null where name = '…'`.
+2. **Team formation is now fully client-side** — taps only touch local state; lineups appear under an amber "Not saved yet" list; one **Save N teams** bulk-inserts. You can save mid-way; only saved teams count toward Finalize (warning shown if pending exist).
+3. **Dark dropdowns fixed** with `color-scheme: light/dark` on the theme root — native select popups and date pickers now follow the theme. One CSS rule, no per-select hacks.
+4. **Skill defaults to 3** — DB default + backfill of all existing nulls. The register-time picker still shows (preset to current level) so people can adjust; Profile and admin edit unchanged.
+5. **Your 6-team confusion — root cause & fix.** Single elim pads 6 teams to a bracket of 8 (2 byes), so round 1 was labeled "Quarterfinals" with semis pre-seeded — technically standard, practically baffling. Fixes: (a) new **Fixed rounds** format with a **matches-per-team input** — circle-method schedule, everyone plays exactly N, labeled plain "Round 1/2/3"; (b) after group play, explicit **playoffs buttons** (top 2 → final; top 4 → 1v4/2v3 semis + final) using live standings, winners auto-advance; (c) knockout labels now apply only to real bracket matches and bye teams are marked "⤴ bye". Round robin also now schedules in rounds. I made **fixed rounds the top/default suggestion** — it fits club nights best.
+6. **Visual overview** — new default tab on running events: progress bar, bracket columns (winner green, loser struck, 👑 champion card), group results matrix (green/red score cells per pairing), 🥇🥈🥉 podium. All server-rendered, horizontal-scroll friendly.
+7. **Closed-event banner** — completed events open with a snobaddy-style summary: champions + 🥈 runners-up + tiles (players, matches, total points). Champion for group-only events is declared only once the event is completed (admins may still want playoffs before that).
+
+Cleanup note: my 12 "Zz *" fixture players + fixture event were fully removed after validation. Your RECCA events and real users untouched.
+
 # Round 2 — tournaments, skill, editing (2026-08-02)
 
 Decisions for the v0.5.x feature batch. All verified in a real browser on prod (full doubles knockout, 3-team singles knockout with a bye, round robin, skill prompt, user disable).
