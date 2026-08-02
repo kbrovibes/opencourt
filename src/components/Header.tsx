@@ -56,7 +56,12 @@ export default function Header({ userName, isAdmin }: HeaderProps) {
       </NavLink>
 
       {/* Avatar + dropdown — positioned absolute right */}
-      <div className="absolute right-4" ref={menuRef}>
+      <div className="absolute right-4 flex items-center gap-2" ref={menuRef}>
+        {isAdmin && (
+          <span className="text-[9px] font-bold tracking-widest uppercase text-red-500/70 dark:text-red-400/70 select-none">
+            Admin
+          </span>
+        )}
         <button
           onClick={() => setMenuOpen((v) => !v)}
           className={`flex items-center justify-center w-8 h-8 rounded-full ${isAdmin ? "bg-red-600" : "bg-sky-600"} text-white text-sm font-semibold`}

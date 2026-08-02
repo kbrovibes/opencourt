@@ -2,6 +2,12 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.6.2] — 2026-08-02
+
+### Changed
+- Subtle ADMIN label in the header for admins.
+- Completed events: winner/stat info now lives only in the top banner — Overview keeps just the bracket + results matrix (progress bar, duplicate champion boxes, and the podium chart are gone).
+
 ## [0.6.1] — 2026-08-02
 
 ### Fixed

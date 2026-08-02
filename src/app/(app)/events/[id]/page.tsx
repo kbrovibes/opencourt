@@ -15,7 +15,7 @@ import TeamFormationPanel from "@/components/TeamFormationPanel";
 import StagePanel from "@/components/StagePanel";
 import EventTabs from "@/components/EventTabs";
 import BackButton from "@/components/BackButton";
-import { BracketView, MatchProgress, Podium, ResultsMatrix } from "@/components/TournamentVisuals";
+import { BracketView, MatchProgress, ResultsMatrix } from "@/components/TournamentVisuals";
 import NavLink from "@/components/NavLink";
 
 export const dynamic = "force-dynamic";
@@ -141,12 +141,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   const standingsSection = (
     <section className="flex flex-col gap-3">
-      {champion && (
-        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3 text-center">
-          <p className="text-2xl leading-none mb-1">🏆</p>
-          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Champions: {champion}</p>
-        </div>
-      )}
       {standings.length === 0 ? (
         <p className="text-sm text-muted px-1">No completed matches yet.</p>
       ) : (
@@ -167,19 +161,22 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     </section>
   );
 
+  const isCompleted = event.status === "completed";
+
+  // Overview: while running — progress + (champion once decided); once the event
+  // is completed the top-of-page banner owns all winner/stat info, so the
+  // overview keeps only the visual record (bracket + matrix).
   const overviewSection = (
     <div className="flex flex-col gap-4">
-      <MatchProgress matches={matches} />
-      {champion && (
-        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3 text-center">
-          <p className="text-2xl leading-none mb-1">🏆</p>
-          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Champions: {champion}</p>
+      {!isCompleted && <MatchProgress matches={matches} />}
+      {!isCompleted && champion && (
+        <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-2.5 text-center">
+          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">🏆 Champions: {champion}</p>
           {runnerUp && <p className="text-xs text-amber-600/80 dark:text-amber-500/80 mt-0.5">Runners-up: {runnerUp}</p>}
         </div>
       )}
       <BracketView matches={matches} teams={teamOpts} />
       <ResultsMatrix matches={matches} teams={teamOpts} />
-      {standings.length > 1 && <Podium standings={standings} labelOf={labelByTeam} />}
     </div>
   );
 

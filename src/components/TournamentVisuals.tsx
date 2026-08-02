@@ -102,22 +102,6 @@ export function BracketView({ matches, teams }: { matches: OcMatch[]; teams: Tea
             </div>
           );
         })}
-        {/* Champion column */}
-        {(() => {
-          const final = knockout.find((m) => m.round === maxKR && m.status === "completed");
-          if (!final?.winning_team) return null;
-          const winId = final.winning_team === 1 ? final.team1_id : final.team2_id;
-          return (
-            <div className="flex flex-col w-40 justify-center">
-              <div className="text-center bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 rounded-xl px-3 py-4">
-                <p className="text-2xl leading-none mb-1">👑</p>
-                <p className="text-[12px] font-bold text-amber-700 dark:text-amber-400">
-                  {winId ? labelOf.get(winId) : "?"}
-                </p>
-              </div>
-            </div>
-          );
-        })()}
       </div>
     </div>
   );
@@ -192,31 +176,6 @@ export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: T
           ))}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-/* ── Podium (top 3) ── */
-export function Podium({ standings, labelOf }: { standings: TeamStanding[]; labelOf: Map<string, string> }) {
-  if (standings.length < 2) return null;
-  const podium = [
-    { medal: "🥈", s: standings[1], h: "h-16" },
-    { medal: "🥇", s: standings[0], h: "h-24" },
-    { medal: "🥉", s: standings[2], h: "h-12" },
-  ].filter((p) => p.s);
-  return (
-    <div className="flex items-end justify-center gap-2 pt-2">
-      {podium.map(({ medal, s, h }) => (
-        <div key={s.teamId} className="flex flex-col items-center gap-1 w-28">
-          <span className="text-xl leading-none">{medal}</span>
-          <span className="text-[11px] font-semibold text-heading text-center leading-tight line-clamp-2">
-            {labelOf.get(s.teamId) ?? "?"}
-          </span>
-          <div className={`w-full ${h} bg-gradient-to-t from-surface-alt to-sky-100 dark:to-sky-500/20 rounded-t-lg border border-b-0 border-border-light dark:border-border flex items-start justify-center pt-1`}>
-            <span className="text-[10px] font-mono text-muted">{s.wins}W</span>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
