@@ -1,3 +1,15 @@
+# Round 4 — copy/reset/confirm batch (2026-08-03, v0.8.0)
+
+Judgment calls:
+
+1. **Copy to New** keeps the same name (no "(copy)" suffix — the date distinguishes), lands as **draft dated today (IST)**, clears `checkin_opens_at` (stale timestamps make no sense), fresh short code. `copied_from` links back for the widget.
+2. **Copy-check-ins widget** appears only for admins, only on copied events, only in roster stage, and hides players already checked in. Nothing preselected; "Select all" is one tap away.
+3. **Reset Scores semantics**: teams that reached a later bracket round *by winning* are cleared from those slots; **bye seeds and standings-seeded playoff slots survive** (they weren't earned by a scored match). Lineup untouched.
+4. **Reset Event** = matches deleted, stage → teams_locked, format cleared, completed events revived to live. Roster/check-ins/teams intact per your spec.
+5. **Score editing** allowed on completed matches until the event is completed — but blocked if the next bracket round is already scored (the edit would corrupt progression); error message points to Reset Scores.
+6. **Delete kept its 2-tap inline confirm** (not the new dialog) — it already worked and is the most deliberate action; happy to unify if you prefer.
+7. The "Tournament/STARTED" box: header removed rather than the whole panel — its buttons (finalize/format/start/playoffs/resets) are the tournament engine. Stage now reads as a chip next to LIVE ("teams / locked / matches / in play").
+
 # Round 3 — your 7 fixes/features (2026-08-02, v0.6.x)
 
 All validated on prod with a fresh 12-player / 6-team dry run (fixed rounds ×3 → top-4 playoffs → final → completed banner → delete).
