@@ -24,6 +24,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid format" }, { status: 400 });
   }
   const roundsPerTeam = parseInt(body.rounds_per_team, 10);
+  const finalsBestOf = [1, 3, 5].includes(parseInt(body.finals_best_of, 10)) ? parseInt(body.finals_best_of, 10) : 1;
   if (format === "fixed_rounds" && (!Number.isFinite(roundsPerTeam) || roundsPerTeam < 1 || roundsPerTeam > 20)) {
     return NextResponse.json({ error: "Matches per team must be between 1 and 20" }, { status: 400 });
   }
@@ -32,7 +33,7 @@ export async function POST(
     const teams = await listTeams(id);
     await clearMatches(id); // idempotent regeneration
     if (format === "single_elim") {
-      await generateSingleElim(id, event.event_type, teams);
+      await generateSingleElim(id, event.event_type, teams, finalsBestOf);
     } else if (format === "round_robin") {
       await generateRoundRobin(id, event.event_type, teams);
     } else if (format === "fixed_rounds") {

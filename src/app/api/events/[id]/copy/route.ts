@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { createEvent, getEvent } from "@/lib/db/events";
+import { supabase } from "@/lib/supabase";
 
 /** Copy an event into a fresh draft dated today (IST). Links back via copied_from. */
 export async function POST(
@@ -16,12 +17,27 @@ export async function POST(
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   const pretty = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" });
-  // Strip a previous "- Mon D" suffix so copies of copies don't chain dates
-  const baseName = source.name.replace(/ - [A-Z][a-z]{2} \d{1,2}$/, "");
+  // Strip previous copy suffixes ("- Mon D" and/or "- N") so copies don't chain
+  const baseName = source.name
+    .replace(/ - \d+$/, "")
+    .replace(/ - [A-Z][a-z]{2} \d{1,2}$/, "");
+
+  // Unique name: "Base - Mon D", then "Base - Mon D - 1", "- 2", … (checks all
+  // events incl. soft-deleted so a restore never collides)
+  const candidate = `${baseName} - ${pretty}`;
+  const { data: existing } = await supabase
+    .from("oc_events")
+    .select("name")
+    .ilike("name", `${candidate}%`);
+  const taken = new Set((existing ?? []).map((e) => e.name));
+  let name = candidate;
+  for (let i = 1; taken.has(name); i++) {
+    name = `${candidate} - ${i}`;
+  }
 
   try {
     const event = await createEvent({
-      name: `${baseName} - ${pretty}`,
+      name,
       event_date: today,
       start_time: source.start_time,
       event_type: source.event_type,

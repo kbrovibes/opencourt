@@ -24,6 +24,7 @@ export async function POST(
 
   const body = await request.json().catch(() => ({}));
   const size = body.size === 4 ? 4 : 2;
+  const finalsBestOf = [1, 3, 5].includes(parseInt(body.best_of, 10)) ? parseInt(body.best_of, 10) : 1;
 
   try {
     const [teams, matches] = await Promise.all([listTeams(id), listMatches(id)]);
@@ -38,7 +39,7 @@ export async function POST(
       );
     }
     const standings = computeTeamStandings(matches);
-    await generatePlayoffs(id, event.event_type, teams, standings.map((s) => s.teamId), size);
+    await generatePlayoffs(id, event.event_type, teams, standings.map((s) => s.teamId), size, finalsBestOf);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

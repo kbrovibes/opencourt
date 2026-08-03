@@ -184,11 +184,16 @@ export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]
   if (group.length === 0 || teams.length < 2) return null;
 
   const labelOf = new Map(teams.map((t) => [t.id, t.label]));
-  const matchFor = (a: string, b: string) =>
-    group.find(
-      (m) =>
-        (m.team1_id === a && m.team2_id === b) || (m.team1_id === b && m.team2_id === a)
-    ) ?? null;
+  const matchFor = (a: string, b: string) => {
+    const pair = group
+      .filter(
+        (m) =>
+          (m.team1_id === a && m.team2_id === b) || (m.team1_id === b && m.team2_id === a)
+      )
+      .sort((x, y) => x.created_at.localeCompare(y.created_at));
+    if (pair.length === 0) return null;
+    return pair.filter((m) => m.status !== "completed").pop() ?? pair[pair.length - 1];
+  };
 
   function cellProps(rowId: string, colId: string) {
     const key = `${rowId}:${colId}`;
@@ -208,12 +213,18 @@ export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]
     };
   }
 
-  // cell[row][col] = "21–15" from row team's perspective
-  const cell = new Map<string, { text: string; won: boolean }>();
+  // cell[row][col] = every completed result between the pair, oldest first,
+  // from the row team's perspective (repeat matchups all show)
+  const cell = new Map<string, { text: string; won: boolean }[]>();
+  const push = (key: string, entry: { text: string; won: boolean }) => {
+    const list = cell.get(key) ?? [];
+    list.push(entry);
+    cell.set(key, list);
+  };
   for (const m of group) {
     if (m.status !== "completed" || !m.team1_id || !m.team2_id) continue;
-    cell.set(`${m.team1_id}:${m.team2_id}`, { text: `${m.team1_score}–${m.team2_score}`, won: m.winning_team === 1 });
-    cell.set(`${m.team2_id}:${m.team1_id}`, { text: `${m.team2_score}–${m.team1_score}`, won: m.winning_team === 2 });
+    push(`${m.team1_id}:${m.team2_id}`, { text: `${m.team1_score}–${m.team2_score}`, won: m.winning_team === 1 });
+    push(`${m.team2_id}:${m.team1_id}`, { text: `${m.team2_score}–${m.team1_score}`, won: m.winning_team === 2 });
   }
   const scheduled = new Set<string>();
   for (const m of group) {
@@ -255,8 +266,8 @@ export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]
                 }
                 const key = `${row.id}:${col.id}`;
                 const sel = selected === key ? " ring-2 ring-sky-500 ring-inset" : "";
-                const c = cell.get(key);
-                if (!c) {
+                const list = cell.get(key);
+                if (!list || list.length === 0) {
                   return (
                     <td
                       key={col.id}
@@ -267,17 +278,38 @@ export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]
                     </td>
                   );
                 }
+                if (list.length === 1) {
+                  return (
+                    <td
+                      key={col.id}
+                      {...cellProps(row.id, col.id)}
+                      className={`min-w-12 h-10 text-center rounded font-mono font-semibold cursor-pointer select-none touch-manipulation${sel} ${
+                        list[0].won
+                          ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400"
+                          : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {list[0].text}
+                    </td>
+                  );
+                }
+                // Repeat matchups: every result on its own line
                 return (
                   <td
                     key={col.id}
                     {...cellProps(row.id, col.id)}
-                    className={`min-w-12 h-10 text-center rounded font-mono font-semibold cursor-pointer select-none touch-manipulation${sel} ${
-                      c.won
-                        ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400"
-                        : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
-                    }`}
+                    className={`min-w-12 min-h-10 text-center rounded font-mono font-semibold bg-surface border border-border-light dark:border-border cursor-pointer select-none touch-manipulation${sel}`}
                   >
-                    {c.text}
+                    <span className="flex flex-col leading-snug py-1">
+                      {list.map((c, i) => (
+                        <span
+                          key={i}
+                          className={c.won ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}
+                        >
+                          {c.text}
+                        </span>
+                      ))}
+                    </span>
                   </td>
                 );
               })}

@@ -117,18 +117,18 @@ export async function recordScore(
     if (!team) return;
     const nextPos = Math.floor(m.bracket_pos / 2);
     const slot: 1 | 2 = m.bracket_pos % 2 === 0 ? 1 : 2;
-    const { data: nextMatch } = await supabase
+    // The next round may be a best-of series — fill the winner into every game
+    const { data: nextMatches } = await supabase
       .from("oc_matches")
       .select("id")
       .eq("event_id", m.event_id)
       .eq("round", m.round + 1)
-      .eq("bracket_pos", nextPos)
-      .maybeSingle();
-    if (nextMatch) {
+      .eq("bracket_pos", nextPos);
+    for (const nm of nextMatches ?? []) {
       await supabase
         .from("oc_matches")
         .update(teamPlayerCols(team as OcTeam, slot))
-        .eq("id", nextMatch.id);
+        .eq("id", nm.id);
     }
   }
 }
@@ -184,7 +184,12 @@ export async function resetScore(matchId: string): Promise<void> {
  * Bracket size = next power of two; top seeds receive the byes and are placed
  * directly into round 2. All rounds are created up front with TBD slots.
  */
-export async function generateSingleElim(eventId: string, matchType: EventType, teams: OcTeam[]): Promise<void> {
+export async function generateSingleElim(
+  eventId: string,
+  matchType: EventType,
+  teams: OcTeam[],
+  finalsBestOf = 1
+): Promise<void> {
   const n = teams.length;
   if (n < 2) throw new Error("Need at least 2 teams");
   let size = 1;
@@ -230,6 +235,20 @@ export async function generateSingleElim(eventId: string, matchType: EventType, 
       .from("oc_matches")
       .update(teamPlayerCols(team, slot))
       .eq("id", created[`2:${r2Pos}`]);
+  }
+
+  // Best-of series for the final: extra games at the same slot
+  for (let g = 1; g < finalsBestOf; g++) {
+    const finalId = created[`${rounds}:0`];
+    const { data: fin } = await supabase.from("oc_matches").select("team1_id, team2_id").eq("id", finalId).single();
+    await supabase.from("oc_matches").insert({
+      event_id: eventId,
+      match_type: matchType,
+      round: rounds,
+      bracket_pos: 0,
+      team1_id: fin?.team1_id ?? null,
+      team2_id: fin?.team2_id ?? null,
+    });
   }
 
   // Special case: byes but only 1 round means n was already a power of 2 — handled above.
@@ -288,7 +307,8 @@ export async function generatePlayoffs(
   matchType: EventType,
   teams: OcTeam[],
   orderedTeamIds: string[],
-  size: 2 | 4
+  size: 2 | 4,
+  finalsBestOf = 1
 ): Promise<void> {
   const byId = new Map(teams.map((t) => [t.id, t]));
   const top = orderedTeamIds.slice(0, size).map((id) => byId.get(id)).filter(Boolean) as OcTeam[];
@@ -304,11 +324,15 @@ export async function generatePlayoffs(
   const base = (data?.[0]?.round ?? 0) + 1;
 
   if (size === 2) {
-    await createTeamMatch(eventId, matchType, top[0], top[1], base, 0);
+    for (let g = 0; g < finalsBestOf; g++) {
+      await createTeamMatch(eventId, matchType, top[0], top[1], base, 0);
+    }
   } else {
     await createTeamMatch(eventId, matchType, top[0], top[3], base, 0);
     await createTeamMatch(eventId, matchType, top[1], top[2], base, 1);
-    await createTeamMatch(eventId, matchType, null, null, base + 1, 0); // final, TBD
+    for (let g = 0; g < finalsBestOf; g++) {
+      await createTeamMatch(eventId, matchType, null, null, base + 1, 0); // final series, TBD
+    }
   }
 }
 

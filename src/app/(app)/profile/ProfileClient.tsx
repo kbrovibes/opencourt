@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase-browser";
 import { useNavigationLoader } from "@/components/NavigationLoader";
 import ThemeToggle from "@/components/ThemeToggle";
 import SkillDots from "@/components/SkillDots";
+import NavLink from "@/components/NavLink";
+import type { PlayerStats } from "@/lib/db/stats";
 
 interface Props {
   name: string;
@@ -13,9 +15,17 @@ interface Props {
   isAdmin: boolean;
   version: string;
   skill: number | null;
+  stats: PlayerStats;
 }
 
-export default function ProfileClient({ name, email, isAdmin, version, skill }: Props) {
+const STATUS_LABEL: Record<string, string> = {
+  live: "LIVE",
+  completed: "done",
+  cancelled: "cancelled",
+  draft: "draft",
+};
+
+export default function ProfileClient({ name, email, isAdmin, version, skill, stats }: Props) {
   const router = useRouter();
   const { startLoading } = useNavigationLoader();
   const [editing, setEditing] = useState(false);
@@ -108,11 +118,51 @@ export default function ProfileClient({ name, email, isAdmin, version, skill }: 
         )}
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { emoji: "🏟", val: stats.tournamentsPlayed, label: "Events" },
+          { emoji: "🎯", val: stats.matchesPlayed, label: "Matches" },
+          { emoji: "🏆", val: stats.matchesWon, label: "Wins" },
+          { emoji: "📈", val: stats.matchesPlayed > 0 ? `${Math.round((stats.matchesWon / stats.matchesPlayed) * 100)}%` : "—", label: "Win rate" },
+        ].map(({ emoji, val, label }) => (
+          <div key={label} className="bg-surface rounded-xl border border-border-light dark:border-border py-2.5 flex flex-col items-center gap-0.5">
+            <span className="text-base leading-none">{emoji}</span>
+            <span className="text-lg font-bold text-heading leading-none">{val}</span>
+            <span className="text-[10px] font-semibold text-muted-light">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent events */}
+      {stats.recentEvents.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-light px-1">Recent events</span>
+          <div className="bg-surface rounded-xl border border-border-light dark:border-border divide-y divide-border-light dark:divide-border">
+            {stats.recentEvents.map((e) => (
+              <NavLink
+                key={e.id}
+                href={`/events/${e.id}`}
+                className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-alt transition-colors"
+              >
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-medium text-heading truncate">{e.name}</span>
+                  <span className="text-[11px] text-muted-light">{e.event_date}</span>
+                </div>
+                <span className={`text-[10px] font-semibold uppercase tracking-wide shrink-0 ${e.status === "live" ? "text-green-600 dark:text-green-400" : "text-muted-light"}`}>
+                  {STATUS_LABEL[e.status] ?? e.status}
+                </span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Skill */}
       <div className="flex flex-col gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-light px-1">Skill level</span>
         <div className="flex items-center justify-between bg-surface rounded-xl border border-border-light dark:border-border px-4 py-3">
-          <span className="text-sm text-text">{mySkill ? `${mySkill} / 5` : "Not set"}</span>
+          <span className="text-sm text-text">Tap to adjust</span>
           <SkillDots level={mySkill} onChange={updateSkill} size="md" />
         </div>
       </div>

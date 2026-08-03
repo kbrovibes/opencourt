@@ -81,13 +81,21 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   let champion: string | null = null;
   let runnerUp: string | null = null;
   if (maxKR > 0) {
+    // The final may be a best-of series — champion once a team clinches the majority
     const finals = knockout.filter((m) => m.round === maxKR);
-    const final = finals.length === 1 ? finals[0] : null;
-    if (final?.status === "completed" && final.winning_team) {
-      const winId = final.winning_team === 1 ? final.team1_id : final.team2_id;
-      const loseId = final.winning_team === 1 ? final.team2_id : final.team1_id;
-      champion = winId ? labelByTeam.get(winId) ?? null : null;
-      runnerUp = loseId ? labelByTeam.get(loseId) ?? null : null;
+    const need = Math.floor(finals.length / 2) + 1;
+    const winCount = new Map<string, number>();
+    for (const f of finals) {
+      if (f.status !== "completed" || !f.winning_team) continue;
+      const w = f.winning_team === 1 ? f.team1_id : f.team2_id;
+      if (w) winCount.set(w, (winCount.get(w) ?? 0) + 1);
+    }
+    const leader = [...winCount.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (leader && leader[1] >= need) {
+      champion = labelByTeam.get(leader[0]) ?? null;
+      const anyFinal = finals.find((f) => f.team1_id && f.team2_id) ?? finals[0];
+      const otherId = anyFinal?.team1_id === leader[0] ? anyFinal?.team2_id : anyFinal?.team1_id;
+      runnerUp = otherId ? labelByTeam.get(otherId) ?? null : null;
     }
   }
   // Group-only events: champion only once the event itself is completed

@@ -200,8 +200,9 @@ export default function MatchesSection({ eventId, stage, eventCompleted, matchFo
       {(() => {
         // Newest round first (finals on top once reached), oldest last.
         const isDone = (ms: OcMatch[]) => ms.length > 0 && ms.every((m) => m.status === "completed");
+        // Manual matches (no round) rank like round 1 — they sort with the oldest.
         const groupRound = (ms: OcMatch[]) =>
-          ms.reduce((acc, m) => Math.max(acc, m.round ?? Number.MAX_SAFE_INTEGER), 0);
+          ms.reduce((acc, m) => Math.max(acc, m.round ?? 0), 0);
         const ordered = [...groups.entries()].sort((a, b) => groupRound(b[1]) - groupRound(a[1]));
         return ordered.map(([groupName, ms]) => {
           const done = isDone(ms);

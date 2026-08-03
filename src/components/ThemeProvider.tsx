@@ -38,7 +38,7 @@ function resolve(theme: Theme): "light" | "dark" {
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("system");
 
   useEffect(() => {
     try {

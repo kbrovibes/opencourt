@@ -2,6 +2,18 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.9.0] — 2026-08-04
+
+### Added
+- Best-of finals (1/3/5): pick when generating a knockout or playoffs; semifinal winners flow into every game of the series; champions declared when a team clinches the majority.
+- Profile page: career stat tiles (events, matches, wins, win rate) and a Recent Events list with links.
+
+### Changed
+- Matches tab sorting: manual matches rank like round 1 (newest rounds stay on top).
+- Score grid shows every result when the same pair plays multiple matches (no more overwriting); double-tap edits the latest open match of that pairing.
+- Copy to New names are unique: "Name - Mon D", then "- 1", "- 2" for same-day copies.
+- Theme defaults to Auto (system) for everyone; skill row shows dots only.
+
 ## [0.8.2] — 2026-08-03
 
 ### Fixed

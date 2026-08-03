@@ -30,6 +30,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
   const [format, setFormat] = useState<MatchFormat>(matchFormat ?? "fixed_rounds");
   const [roundsPerTeam, setRoundsPerTeam] = useState("3");
   const [pendingReset, setPendingReset] = useState<"scores" | "event" | null>(null);
+  const [bestOf, setBestOf] = useState("1");
 
   async function post(path: string, body: Record<string, unknown>) {
     setBusy(true);
@@ -95,6 +96,25 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
               </button>
             ))}
           </div>
+          {format === "single_elim" && (
+            <div className="flex items-center justify-between px-1">
+            <label className="text-xs text-text">Final — best of</label>
+              <div className="flex bg-surface-alt rounded-lg p-0.5">
+              {["1", "3", "5"].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setBestOf(n)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                    bestOf === n ? "bg-surface text-heading shadow-sm" : "text-text-light hover:text-text"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            </div>
+          )}
           {format === "fixed_rounds" && (
             <div className="flex items-center justify-between px-1">
               <label className="text-sm text-text">Matches per team</label>
@@ -110,7 +130,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
           )}
           <div className="flex gap-2">
             <button
-              onClick={() => post(`/api/events/${eventId}/generate-matches`, { format, rounds_per_team: roundsPerTeam })}
+              onClick={() => post(`/api/events/${eventId}/generate-matches`, { format, rounds_per_team: roundsPerTeam, finals_best_of: bestOf })}
               disabled={busy}
               className={`${primary} bg-sky-600 hover:bg-sky-500`}
             >
@@ -142,9 +162,27 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
           {/* Playoffs for group formats once group play is done */}
           {groupFormat && !hasKnockout && (
             groupPending === 0 && hasCompletedMatches ? (
+              <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-xs text-text">Final — best of</label>
+                <div className="flex bg-surface-alt rounded-lg p-0.5">
+                  {["1", "3", "5"].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setBestOf(n)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        bestOf === n ? "bg-surface text-heading shadow-sm" : "text-text-light hover:text-text"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => post(`/api/events/${eventId}/playoffs`, { size: 2 })}
+                  onClick={() => post(`/api/events/${eventId}/playoffs`, { size: 2, best_of: bestOf })}
                   disabled={busy}
                   className={`${primary} bg-amber-600 hover:bg-amber-500`}
                 >
@@ -152,13 +190,14 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
                 </button>
                 {teamsCount >= 4 && (
                   <button
-                    onClick={() => post(`/api/events/${eventId}/playoffs`, { size: 4 })}
+                    onClick={() => post(`/api/events/${eventId}/playoffs`, { size: 4, best_of: bestOf })}
                     disabled={busy}
                     className={`${primary} bg-amber-600 hover:bg-amber-500`}
                   >
                     🏆 Semis + Final (top 4)
                   </button>
                 )}
+              </div>
               </div>
             ) : groupPending > 0 ? (
               <p className="text-[11px] text-muted-light px-1">
