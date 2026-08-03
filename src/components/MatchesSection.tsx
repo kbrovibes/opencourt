@@ -67,7 +67,6 @@ function ScoreEntry({ match, onDone }: { match: OcMatch; onDone: () => void }) {
 
 export default function MatchesSection({ eventId, stage, eventCompleted, matchFormat, isAdmin, matches, teams }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [sel1, setSel1] = useState("");
@@ -199,37 +198,23 @@ export default function MatchesSection({ eventId, stage, eventCompleted, matchFo
       )}
 
       {(() => {
-        // Active (incomplete) rounds first; fully-scored rounds fold to the bottom.
-        const entries = [...groups.entries()];
+        // Newest round first (finals on top once reached), oldest last.
         const isDone = (ms: OcMatch[]) => ms.length > 0 && ms.every((m) => m.status === "completed");
-        const ordered = [...entries.filter(([, ms]) => !isDone(ms)), ...entries.filter(([, ms]) => isDone(ms))];
+        const groupRound = (ms: OcMatch[]) =>
+          ms.reduce((acc, m) => Math.max(acc, m.round ?? Number.MAX_SAFE_INTEGER), 0);
+        const ordered = [...groups.entries()].sort((a, b) => groupRound(b[1]) - groupRound(a[1]));
         return ordered.map(([groupName, ms]) => {
           const done = isDone(ms);
           const key = groupName || "flat";
-          const isOpen = !done || expanded.has(key);
           return (
         <div key={key} className="flex flex-col gap-2">
-          {done ? (
-            <button
-              onClick={() => {
-                const next = new Set(expanded);
-                if (next.has(key)) next.delete(key);
-                else next.add(key);
-                setExpanded(next);
-              }}
-              className="flex items-center justify-between px-1 mt-1 text-left"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-light">
-                {groupName || "Matches"} <span className="text-green-600 dark:text-green-400 normal-case">✓ done</span>
-              </span>
-              <span className="text-[11px] text-muted-light">{isOpen ? "▲" : `${ms.length} ▼`}</span>
-            </button>
-          ) : (
-            groupName && (
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1 mt-1">{groupName}</p>
-            )
+          {groupName && (
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1 mt-1">
+              {groupName}
+              {done && <span className="text-green-600 dark:text-green-400 normal-case font-semibold"> ✓ done</span>}
+            </p>
           )}
-          {isOpen && ms.map((m) => {
+          {ms.map((m) => {
             const done = m.status === "completed";
             const ready = m.team1_id && m.team2_id;
             return (

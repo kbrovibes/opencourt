@@ -15,10 +15,13 @@ export async function POST(
   if (!source) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const pretty = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Kolkata" });
+  // Strip a previous "- Mon D" suffix so copies of copies don't chain dates
+  const baseName = source.name.replace(/ - [A-Z][a-z]{2} \d{1,2}$/, "");
 
   try {
     const event = await createEvent({
-      name: source.name,
+      name: `${baseName} - ${pretty}`,
       event_date: today,
       start_time: source.start_time,
       event_type: source.event_type,

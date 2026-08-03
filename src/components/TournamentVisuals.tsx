@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OcMatch } from "@/lib/db/matches";
 
@@ -179,6 +179,7 @@ function ScoreDialog({ match, labelOf, onClose }: { match: OcMatch; labelOf: Map
 export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]; teams: TeamInfo[]; canScore?: boolean }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [dialogMatch, setDialogMatch] = useState<OcMatch | null>(null);
+  const lastTap = useRef<{ key: string; t: number }>({ key: "", t: 0 });
   const group = matches.filter((m) => m.bracket_pos === null);
   if (group.length === 0 || teams.length < 2) return null;
 
@@ -193,11 +194,17 @@ export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]
     const key = `${rowId}:${colId}`;
     const m = matchFor(rowId, colId);
     return {
-      onClick: () => setSelected(selected === key ? null : key),
-      onDoubleClick: () => {
-        if (canScore && m) setDialogMatch(m);
+      // dblclick is unreliable on touch — detect double-tap by click timing instead
+      onClick: () => {
+        const now = Date.now();
+        if (lastTap.current.key === key && now - lastTap.current.t < 400) {
+          lastTap.current = { key: "", t: 0 };
+          if (canScore && m) setDialogMatch(m);
+          return;
+        }
+        lastTap.current = { key, t: now };
+        setSelected(selected === key ? null : key);
       },
-      "data-selected": selected === key || undefined,
     };
   }
 
@@ -254,7 +261,7 @@ export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]
                     <td
                       key={col.id}
                       {...cellProps(row.id, col.id)}
-                      className={`min-w-12 h-10 text-center bg-surface rounded border border-border-light dark:border-border text-muted-lighter cursor-pointer select-none${sel}`}
+                      className={`min-w-12 h-10 text-center bg-surface rounded border border-border-light dark:border-border text-muted-lighter cursor-pointer select-none touch-manipulation${sel}`}
                     >
                       {scheduled.has(key) ? "·" : ""}
                     </td>
@@ -264,7 +271,7 @@ export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]
                   <td
                     key={col.id}
                     {...cellProps(row.id, col.id)}
-                    className={`min-w-12 h-10 text-center rounded font-mono font-semibold cursor-pointer select-none${sel} ${
+                    className={`min-w-12 h-10 text-center rounded font-mono font-semibold cursor-pointer select-none touch-manipulation${sel} ${
                       c.won
                         ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400"
                         : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"

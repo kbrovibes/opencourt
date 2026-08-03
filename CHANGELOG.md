@@ -2,6 +2,15 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.8.2] — 2026-08-03
+
+### Fixed
+- Copied events get a "- <date>" name suffix (no duplicate names; copy-of-copy doesn't chain dates).
+- Score popup now opens on double-tap on phones (custom tap timing instead of dblclick; no zoom hijack).
+
+### Changed
+- Matches tab: rounds no longer fold — sorted newest round first, completed rounds keep a ✓ done marker.
+
 ## [0.8.1] — 2026-08-03
 
 ### Changed
