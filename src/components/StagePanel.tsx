@@ -49,8 +49,8 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
 
   const setStage = (s: EventStage) => post(`/api/events/${eventId}/stage`, { stage: s });
 
-  const primary = "flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50";
-  const secondary = "py-2.5 px-3 rounded-lg text-sm font-semibold bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-50";
+  const primary = "flex-1 py-2 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-50";
+  const secondary = "py-2 px-3 rounded-lg text-xs font-semibold bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-50";
 
   const groupFormat = matchFormat === "round_robin" || matchFormat === "fixed_rounds" || matchFormat === "manual";
 
@@ -84,7 +84,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
               <button
                 key={f.value}
                 onClick={() => setFormat(f.value)}
-                className={`text-left px-3 py-2 rounded-lg border transition-colors ${
+                className={`text-left px-3 py-1.5 rounded-lg border transition-colors ${
                   format === f.value
                     ? "border-sky-500 bg-sky-50 dark:bg-sky-500/10"
                     : "border-border-light dark:border-border bg-surface-alt hover:border-sky-300"
@@ -165,11 +165,6 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
                 {groupPending} group match{groupPending > 1 ? "es" : ""} left — playoffs unlock when they're done.
               </p>
             ) : null
-          )}
-          {!hasCompletedMatches && (
-            <button onClick={() => setStage("matches_set")} disabled={busy} className={secondary}>
-              ⏸ Un-start (no scores yet)
-            </button>
           )}
           <div className="flex gap-2">
             <button

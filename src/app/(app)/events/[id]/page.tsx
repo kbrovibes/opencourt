@@ -203,7 +203,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
       <BracketView matches={matches} teams={teamOpts} />
-      <ResultsMatrix matches={matches} teams={teamOpts} />
+      <ResultsMatrix matches={matches} teams={teamOpts} canScore={player.isAdmin && event.stage === "started" && !isCompleted} />
     </div>
   );
 
@@ -277,6 +277,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <span>{event.event_type === "doubles" ? "🤝 Doubles" : "🏸 Singles"}</span>
           <span>👥 {roster.length}/{event.max_players} registered</span>
           {event.location && <span>📍 {event.location}</span>}
+          <ShareLink code={event.short_code} />
         </div>
         {event.checkin_opens_at && (
           <p className="text-xs text-muted-light">
@@ -284,10 +285,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           </p>
         )}
         {event.notes && <p className="text-[13px] text-text whitespace-pre-wrap">{event.notes}</p>}
-        <ShareLink code={event.short_code} />
       </div>
 
-      {player.isAdmin && <EventAdminControls event={event} />}
+      {player.isAdmin && <EventAdminControls event={event} canUnstart={event.stage === "started" && !matches.some((m) => m.status === "completed")} />}
       {copySource && (
         <CopyCheckins eventId={event.id} sourceName={copySource.name} players={copySource.players} />
       )}

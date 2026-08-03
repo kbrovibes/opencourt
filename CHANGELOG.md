@@ -2,6 +2,12 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.8.1] — 2026-08-03
+
+### Changed
+- Event page compaction: share URL box replaced by a small Share chip in the header; admin actions are a uniform compact 3-column grid (Un-start now sits beside Copy to New); stage-panel buttons slimmed.
+- Score grid stretches to full width when there are few teams; tap a cell to select it, double-tap to enter or edit that match's score in an in-app popup (admins, while running).
+
 ## [0.8.0] — 2026-08-03
 
 ### Added

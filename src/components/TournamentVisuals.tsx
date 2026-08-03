@@ -1,7 +1,10 @@
-import type { OcMatch } from "@/lib/db/matches";
-import type { TeamStanding } from "@/lib/db/matches";
+"use client";
 
-/* Server-rendered visual widgets for the tournament Overview tab. */
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import type { OcMatch } from "@/lib/db/matches";
+
+/* Visual widgets for the tournament Overview tab. */
 
 interface TeamInfo {
   id: string;
@@ -108,10 +111,95 @@ export function BracketView({ matches, teams }: { matches: OcMatch[]; teams: Tea
   );
 }
 
+/* ── Score dialog (double-tap a matrix cell) ── */
+function ScoreDialog({ match, labelOf, onClose }: { match: OcMatch; labelOf: Map<string, string>; onClose: () => void }) {
+  const router = useRouter();
+  const [t1, setT1] = useState(match.team1_score !== null ? String(match.team1_score) : "");
+  const [t2, setT2] = useState(match.team2_score !== null ? String(match.team2_score) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/matches/${match.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ team1_score: t1, team2_score: t2 }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Failed to save");
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    onClose();
+    router.refresh();
+  }
+
+  const inputCls =
+    "w-20 px-2 py-2 bg-surface-alt border border-stone-300 dark:border-border rounded-lg text-base text-center text-text focus:outline-none focus:ring-2 focus:ring-sky-500";
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-6 bg-overlay backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-xs bg-surface border border-border-light dark:border-border rounded-2xl shadow-xl dark:shadow-none dark:ring-1 dark:ring-border p-5 flex flex-col gap-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-bold text-heading leading-snug">
+          {labelOf.get(match.team1_id ?? "") ?? "?"}
+          <span className="text-muted-light font-normal text-xs mx-1.5">vs</span>
+          {labelOf.get(match.team2_id ?? "") ?? "?"}
+        </h3>
+        <div className="flex items-center justify-center gap-3">
+          <input type="number" min={0} value={t1} onChange={(e) => setT1(e.target.value)} className={inputCls} autoFocus />
+          <span className="text-sm text-muted">—</span>
+          <input type="number" min={0} value={t2} onChange={(e) => setT2(e.target.value)} className={inputCls} />
+        </div>
+        {error && <p className="text-xs text-red-600 dark:text-red-400 text-center">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={onClose} disabled={busy} className="flex-1 py-2 rounded-lg text-xs font-semibold bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-50">
+            Close
+          </button>
+          <button
+            onClick={save}
+            disabled={busy || t1 === "" || t2 === ""}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 transition-colors disabled:opacity-50"
+          >
+            {busy ? "…" : "Save score"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Group-phase results matrix ── */
-export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: TeamInfo[] }) {
+export function ResultsMatrix({ matches, teams, canScore }: { matches: OcMatch[]; teams: TeamInfo[]; canScore?: boolean }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [dialogMatch, setDialogMatch] = useState<OcMatch | null>(null);
   const group = matches.filter((m) => m.bracket_pos === null);
   if (group.length === 0 || teams.length < 2) return null;
+
+  const labelOf = new Map(teams.map((t) => [t.id, t.label]));
+  const matchFor = (a: string, b: string) =>
+    group.find(
+      (m) =>
+        (m.team1_id === a && m.team2_id === b) || (m.team1_id === b && m.team2_id === a)
+    ) ?? null;
+
+  function cellProps(rowId: string, colId: string) {
+    const key = `${rowId}:${colId}`;
+    const m = matchFor(rowId, colId);
+    return {
+      onClick: () => setSelected(selected === key ? null : key),
+      onDoubleClick: () => {
+        if (canScore && m) setDialogMatch(m);
+      },
+      "data-selected": selected === key || undefined,
+    };
+  }
 
   // cell[row][col] = "21–15" from row team's perspective
   const cell = new Map<string, { text: string; won: boolean }>();
@@ -130,12 +218,12 @@ export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: T
 
   return (
     <div className="overflow-x-auto -mx-1 px-1">
-      <table className="text-[11px] border-separate border-spacing-1 min-w-max">
+      <table className={`text-[11px] border-separate border-spacing-1 ${teams.length <= 5 ? "w-full" : "min-w-max"}`}>
         <thead>
           <tr>
             <th className="text-left pr-2 font-semibold text-muted-light">Team</th>
             {teams.map((t) => (
-              <th key={t.id} className="w-12 text-center font-mono text-muted-light" title={t.label}>
+              <th key={t.id} className="min-w-12 text-center font-mono text-muted-light" title={t.label}>
                 #{t.seed}
               </th>
             ))}
@@ -144,7 +232,7 @@ export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: T
         <tbody>
           {teams.map((row) => (
             <tr key={row.id}>
-              <td className="pr-3 py-2 font-medium text-heading whitespace-nowrap align-middle">
+              <td className="pr-3 py-2 font-medium text-heading whitespace-nowrap align-middle w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-muted-light text-[10px]">#{row.seed}</span>
                   <span className="leading-tight">
@@ -156,20 +244,27 @@ export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: T
               </td>
               {teams.map((col) => {
                 if (row.id === col.id) {
-                  return <td key={col.id} className="w-12 h-10 text-center bg-surface-alt rounded text-muted-lighter">—</td>;
+                  return <td key={col.id} className="min-w-12 h-10 text-center bg-surface-alt rounded text-muted-lighter">—</td>;
                 }
-                const c = cell.get(`${row.id}:${col.id}`);
+                const key = `${row.id}:${col.id}`;
+                const sel = selected === key ? " ring-2 ring-sky-500 ring-inset" : "";
+                const c = cell.get(key);
                 if (!c) {
                   return (
-                    <td key={col.id} className="w-12 h-10 text-center bg-surface rounded border border-border-light dark:border-border text-muted-lighter">
-                      {scheduled.has(`${row.id}:${col.id}`) ? "·" : ""}
+                    <td
+                      key={col.id}
+                      {...cellProps(row.id, col.id)}
+                      className={`min-w-12 h-10 text-center bg-surface rounded border border-border-light dark:border-border text-muted-lighter cursor-pointer select-none${sel}`}
+                    >
+                      {scheduled.has(key) ? "·" : ""}
                     </td>
                   );
                 }
                 return (
                   <td
                     key={col.id}
-                    className={`w-12 h-10 text-center rounded font-mono font-semibold ${
+                    {...cellProps(row.id, col.id)}
+                    className={`min-w-12 h-10 text-center rounded font-mono font-semibold cursor-pointer select-none${sel} ${
                       c.won
                         ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400"
                         : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
@@ -183,6 +278,7 @@ export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: T
           ))}
         </tbody>
       </table>
+      {dialogMatch && <ScoreDialog match={dialogMatch} labelOf={labelOf} onClose={() => setDialogMatch(null)} />}
     </div>
   );
 }
