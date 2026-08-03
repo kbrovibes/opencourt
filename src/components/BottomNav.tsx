@@ -57,9 +57,9 @@ export default function BottomNav({ isAdmin, todayHref }: { isAdmin: boolean; to
   const pathname = usePathname();
 
   const items = [
-    { href: "/", label: "Events", Icon: EventsIcon, show: true },
     { href: todayHref, label: "Today", Icon: TodayIcon, show: true },
-    { href: "/users", label: "Users", Icon: UsersIcon, show: isAdmin },
+    { href: "/", label: "Events", Icon: EventsIcon, show: true },
+    { href: "/users", label: "Players", Icon: UsersIcon, show: isAdmin },
     { href: "/profile", label: "Profile", Icon: ProfileIcon, show: true },
   ].filter((i) => i.show);
 

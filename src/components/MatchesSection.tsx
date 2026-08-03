@@ -13,6 +13,7 @@ interface TeamOpt {
 interface Props {
   eventId: string;
   stage: EventStage;
+  eventCompleted: boolean;
   matchFormat: MatchFormat | null;
   isAdmin: boolean;
   matches: OcMatch[];
@@ -25,8 +26,8 @@ const selectCls =
 
 
 function ScoreEntry({ match, onDone }: { match: OcMatch; onDone: () => void }) {
-  const [t1, setT1] = useState("");
-  const [t2, setT2] = useState("");
+  const [t1, setT1] = useState(match.team1_score !== null ? String(match.team1_score) : "");
+  const [t2, setT2] = useState(match.team2_score !== null ? String(match.team2_score) : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +65,9 @@ function ScoreEntry({ match, onDone }: { match: OcMatch; onDone: () => void }) {
   );
 }
 
-export default function MatchesSection({ eventId, stage, matchFormat, isAdmin, matches, teams }: Props) {
+export default function MatchesSection({ eventId, stage, eventCompleted, matchFormat, isAdmin, matches, teams }: Props) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [sel1, setSel1] = useState("");
@@ -195,12 +198,38 @@ export default function MatchesSection({ eventId, stage, matchFormat, isAdmin, m
         </p>
       )}
 
-      {[...groups.entries()].map(([groupName, ms]) => (
-        <div key={groupName || "flat"} className="flex flex-col gap-2">
-          {groupName && (
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1 mt-1">{groupName}</p>
+      {(() => {
+        // Active (incomplete) rounds first; fully-scored rounds fold to the bottom.
+        const entries = [...groups.entries()];
+        const isDone = (ms: OcMatch[]) => ms.length > 0 && ms.every((m) => m.status === "completed");
+        const ordered = [...entries.filter(([, ms]) => !isDone(ms)), ...entries.filter(([, ms]) => isDone(ms))];
+        return ordered.map(([groupName, ms]) => {
+          const done = isDone(ms);
+          const key = groupName || "flat";
+          const isOpen = !done || expanded.has(key);
+          return (
+        <div key={key} className="flex flex-col gap-2">
+          {done ? (
+            <button
+              onClick={() => {
+                const next = new Set(expanded);
+                if (next.has(key)) next.delete(key);
+                else next.add(key);
+                setExpanded(next);
+              }}
+              className="flex items-center justify-between px-1 mt-1 text-left"
+            >
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-light">
+                {groupName || "Matches"} <span className="text-green-600 dark:text-green-400 normal-case">✓ done</span>
+              </span>
+              <span className="text-[11px] text-muted-light">{isOpen ? "▲" : `${ms.length} ▼`}</span>
+            </button>
+          ) : (
+            groupName && (
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1 mt-1">{groupName}</p>
+            )
           )}
-          {ms.map((m) => {
+          {isOpen && ms.map((m) => {
             const done = m.status === "completed";
             const ready = m.team1_id && m.team2_id;
             return (
@@ -226,14 +255,27 @@ export default function MatchesSection({ eventId, stage, matchFormat, isAdmin, m
                         Delete
                       </button>
                     )}
+                    {isAdmin && done && !eventCompleted && (
+                      <button
+                        onClick={() => setEditingId(editingId === m.id ? null : m.id)}
+                        className="text-[11px] text-sky-500 dark:text-sky-400 hover:text-sky-600"
+                      >
+                        {editingId === m.id ? "Close" : "✎ Edit score"}
+                      </button>
+                    )}
                   </div>
                 </div>
                 {isAdmin && started && !done && ready && <ScoreEntry match={m} onDone={() => router.refresh()} />}
+                {isAdmin && done && !eventCompleted && editingId === m.id && (
+                  <ScoreEntry match={m} onDone={() => { setEditingId(null); router.refresh(); }} />
+                )}
               </div>
             );
           })}
         </div>
-      ))}
+          );
+        });
+      })()}
     </section>
   );
 }

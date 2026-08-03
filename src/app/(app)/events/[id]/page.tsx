@@ -17,6 +17,7 @@ import EventTabs from "@/components/EventTabs";
 import BackButton from "@/components/BackButton";
 import { BracketView, MatchProgress, ResultsMatrix } from "@/components/TournamentVisuals";
 import NavLink from "@/components/NavLink";
+import CopyCheckins from "@/components/CopyCheckins";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,20 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     listTeams(id),
     listPlayers(true),
   ]);
+
+  // Copied event: offer the source event's roster for one-tap re-check-in
+  let copySource: { name: string; players: { id: string; name: string }[] } | null = null;
+  if (player.isAdmin && event.copied_from && event.stage === "roster") {
+    const src = await getEvent(event.copied_from);
+    if (src) {
+      const srcRoster = await getRoster(src);
+      const alreadyIn = new Set(roster.filter((r) => r.checked_in_at).map((r) => r.player_id));
+      copySource = {
+        name: src.name,
+        players: srcRoster.filter((r) => !alreadyIn.has(r.player_id)).map((r) => ({ id: r.player_id, name: r.name })),
+      };
+    }
+  }
 
   const me = roster.find((r) => r.player_id === player.id) ?? null;
   const checkedIn = roster.filter((r) => r.checked_in_at);
@@ -196,6 +211,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     <MatchesSection
       eventId={event.id}
       stage={event.stage}
+      eventCompleted={isCompleted}
       matchFormat={event.match_format}
       isAdmin={player.isAdmin}
       matches={matches}
@@ -249,6 +265,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </NavLink>
             )}
             <StatusBadge status={event.status} />
+            {event.status === "live" && event.stage !== "roster" && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400">
+                {{ team_formation: "teams", teams_locked: "locked", matches_set: "matches", started: "in play" }[event.stage]}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
@@ -267,6 +288,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {player.isAdmin && <EventAdminControls event={event} />}
+      {copySource && (
+        <CopyCheckins eventId={event.id} sourceName={copySource.name} players={copySource.players} />
+      )}
       {player.isAdmin && event.status === "live" && (
         <StagePanel
           eventId={event.id}

@@ -224,7 +224,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
           onClick={() => { setShowAdd((v) => !v); setShowBulk(false); }}
           className="flex-1 py-2 bg-surface-alt text-text rounded-lg text-sm font-semibold hover:bg-border-light dark:hover:bg-border transition-colors"
         >
-          {showAdd ? "Close" : "+ Add user"}
+          {showAdd ? "Close" : "+ Add player"}
         </button>
         <button
           onClick={() => { setShowBulk((v) => !v); setShowAdd(false); }}
@@ -239,7 +239,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
           <input className={inputCls} placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} required />
           <input className={inputCls} type="email" placeholder="Email (optional — links their login later)" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
           <button type="submit" disabled={adding} className="py-2 bg-stone-900 dark:bg-sky-600 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
-            {adding ? "Adding…" : "Add user"}
+            {adding ? "Adding…" : "Add player"}
           </button>
         </form>
       )}
@@ -269,7 +269,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
       {/* Search */}
       <input
         className={inputCls}
-        placeholder={`Search ${players.length - disabledCount} users…`}
+        placeholder={`Search ${players.length - disabledCount} players…`}
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
       />
@@ -278,7 +278,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
       <div className="bg-surface rounded-xl border border-border-light dark:border-border divide-y divide-border-light dark:divide-border">
         {filtered.length === 0 && (
           <p className="px-4 py-3 text-sm text-muted">
-            {showDisabled ? "No disabled users." : "No users found."}
+            {showDisabled ? "No disabled players." : "No players found."}
           </p>
         )}
         {filtered.map((p) => {
@@ -372,7 +372,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
           onClick={() => setShowDisabled((v) => !v)}
           className="text-xs text-muted-light hover:text-heading self-center"
         >
-          {showDisabled ? "← Back to active users" : `Show disabled users (${disabledCount})`}
+          {showDisabled ? "← Back to active players" : `Show disabled players (${disabledCount})`}
         </button>
       )}
     </div>

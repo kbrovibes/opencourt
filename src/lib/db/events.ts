@@ -20,6 +20,7 @@ export interface OcEvent {
   location: string | null;
   notes: string | null;
   created_by: string | null;
+  copied_from: string | null;
   created_at: string;
 }
 
@@ -28,7 +29,7 @@ export const STAGE_TRANSITIONS: Record<EventStage, EventStage[]> = {
   roster: ["team_formation"],
   team_formation: ["roster", "teams_locked"],
   teams_locked: ["team_formation", "matches_set"],
-  matches_set: ["teams_locked", "started"],
+  matches_set: ["teams_locked", "team_formation", "started"],
   started: ["matches_set"],
 };
 
@@ -43,7 +44,7 @@ export interface RosterEntry {
 }
 
 const EVENT_COLS =
-  "id, name, event_date, start_time, event_type, max_players, status, stage, match_format, checkin_opens_at, short_code, location, notes, created_by, created_at";
+  "id, name, event_date, start_time, event_type, max_players, status, stage, match_format, checkin_opens_at, short_code, location, notes, created_by, copied_from, created_at";
 
 // Unambiguous alphabet for short codes (no 0/O, 1/I/L)
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -102,6 +103,7 @@ export interface CreateEventInput {
   location?: string | null;
   notes?: string | null;
   created_by: string;
+  copied_from?: string | null;
 }
 
 export async function createEvent(input: CreateEventInput): Promise<OcEvent> {

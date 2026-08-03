@@ -133,6 +133,43 @@ export async function recordScore(
   }
 }
 
+/**
+ * Reset every score in an event to pending and rewind bracket progression:
+ * teams that reached a later knockout round by WINNING an earlier one are
+ * cleared from those slots; bye seeds and standings-seeded playoff slots stay.
+ */
+export async function resetAllScores(eventId: string): Promise<void> {
+  const matches = await listMatches(eventId);
+  const { error } = await supabase
+    .from("oc_matches")
+    .update({ team1_score: null, team2_score: null, winning_team: null, status: "pending", completed_at: null })
+    .eq("event_id", eventId);
+  if (error) throw error;
+
+  const knockout = matches.filter((m) => m.round !== null && m.bracket_pos !== null);
+  if (knockout.length === 0) return;
+  const minKR = Math.min(...knockout.map((m) => m.round!));
+  for (const m of knockout) {
+    if (m.round === minKR) continue;
+    const clears: Record<string, null> = {};
+    for (const slot of [1, 2] as const) {
+      const tid = slot === 1 ? m.team1_id : m.team2_id;
+      if (!tid) continue;
+      const advancedHere = knockout.some(
+        (k) => k.round! < m.round! && (k.team1_id === tid || k.team2_id === tid)
+      );
+      if (advancedHere) {
+        clears[`team${slot}_id`] = null;
+        clears[`team${slot}_player1_id`] = null;
+        clears[`team${slot}_player2_id`] = null;
+      }
+    }
+    if (Object.keys(clears).length > 0) {
+      await supabase.from("oc_matches").update(clears).eq("id", m.id);
+    }
+  }
+}
+
 /** Undo a recorded score (does NOT rewind bracket progression — regenerate instead). */
 export async function resetScore(matchId: string): Promise<void> {
   const { error } = await supabase

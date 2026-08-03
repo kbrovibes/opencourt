@@ -35,7 +35,7 @@ export async function POST(
 
   try {
     // Stepping back from matches_set discards generated matches
-    if (event.stage === "matches_set" && target === "teams_locked") {
+    if (event.stage === "matches_set" && (target === "teams_locked" || target === "team_formation")) {
       await clearMatches(id);
       await updateEvent(id, { stage: target, match_format: null });
     } else {

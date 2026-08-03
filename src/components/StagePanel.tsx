@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import type { EventStage, EventType, MatchFormat } from "@/lib/db/events";
 
 interface Props {
@@ -28,6 +29,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
   const [error, setError] = useState<string | null>(null);
   const [format, setFormat] = useState<MatchFormat>(matchFormat ?? "fixed_rounds");
   const [roundsPerTeam, setRoundsPerTeam] = useState("3");
+  const [pendingReset, setPendingReset] = useState<"scores" | "event" | null>(null);
 
   async function post(path: string, body: Record<string, unknown>) {
     setBusy(true);
@@ -53,14 +55,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
   const groupFormat = matchFormat === "round_robin" || matchFormat === "fixed_rounds" || matchFormat === "manual";
 
   return (
-    <div className="bg-surface rounded-xl border border-border-light dark:border-border px-4 py-3 flex flex-col gap-2.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-light">Tournament</span>
-        <span className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
-          {stage.replace("_", " ")}
-        </span>
-      </div>
-
+    <div className="flex flex-col gap-2.5">
       {stage === "roster" && (
         <button onClick={() => setStage("team_formation")} disabled={busy} className={`${primary} bg-sky-600 hover:bg-sky-500`}>
           👥 Start team formation
@@ -136,6 +131,9 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
           <button onClick={() => setStage("teams_locked")} disabled={busy} className={secondary} title="Discards generated matches">
             ↩︎ Change format
           </button>
+          <button onClick={() => setStage("team_formation")} disabled={busy} className={secondary} title="Discards generated matches">
+            ✏️ Edit teams
+          </button>
         </div>
       )}
 
@@ -162,26 +160,64 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
                   </button>
                 )}
               </div>
-            ) : (
-              <p className="text-[11px] text-muted-light">
-                {groupPending > 0
-                  ? `${groupPending} group match${groupPending > 1 ? "es" : ""} left — playoffs unlock when they're done.`
-                  : "Enter scores in the Matches tab."}
+            ) : groupPending > 0 ? (
+              <p className="text-[11px] text-muted-light px-1">
+                {groupPending} group match{groupPending > 1 ? "es" : ""} left — playoffs unlock when they're done.
               </p>
-            )
-          )}
-          {!groupFormat && (
-            <p className="text-[11px] text-muted-light">Tournament running — enter scores in the Matches tab.</p>
+            ) : null
           )}
           {!hasCompletedMatches && (
             <button onClick={() => setStage("matches_set")} disabled={busy} className={secondary}>
               ⏸ Un-start (no scores yet)
             </button>
           )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPendingReset("scores")}
+              disabled={busy || !hasCompletedMatches}
+              className={`flex-1 py-2 rounded-lg text-xs font-semibold bg-surface-alt text-amber-600 dark:text-amber-400 hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-40`}
+            >
+              ↺ Reset scores
+            </button>
+            <button
+              onClick={() => setPendingReset("event")}
+              disabled={busy}
+              className={`flex-1 py-2 rounded-lg text-xs font-semibold bg-surface-alt text-red-600 dark:text-red-400 hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-40`}
+            >
+              ⟲ Reset event
+            </button>
+          </div>
         </>
       )}
 
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+
+      <ConfirmDialog
+        open={pendingReset === "scores"}
+        title="Reset all scores?"
+        message="Every match goes back to unplayed. Bracket winners are rewound; teams and the match lineup stay exactly as they are."
+        confirmLabel="Reset scores"
+        danger
+        busy={busy}
+        onConfirm={async () => {
+          await post(`/api/events/${eventId}/reset`, { mode: "scores" });
+          setPendingReset(null);
+        }}
+        onClose={() => setPendingReset(null)}
+      />
+      <ConfirmDialog
+        open={pendingReset === "event"}
+        title="Reset the event?"
+        message="All matches and scores are deleted and the event returns to locked teams. Roster, check-ins and teams are kept — you can re-pick the format or edit teams from there."
+        confirmLabel="Reset event"
+        danger
+        busy={busy}
+        onConfirm={async () => {
+          await post(`/api/events/${eventId}/reset`, { mode: "event" });
+          setPendingReset(null);
+        }}
+        onClose={() => setPendingReset(null)}
+      />
     </div>
   );
 }

@@ -2,6 +2,20 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.8.0] — 2026-08-03
+
+### Added
+- Copy to New: any event can be duplicated as a today-dated draft; copied events get a folded widget to bulk re-check-in the previous crowd (tap names → one Check in button).
+- Reset Scores (rewinds brackets, keeps lineup) and Reset Event (clears matches, back to locked teams — roster/check-ins/teams retained), both behind themed in-app confirmation dialogs.
+- Back to Draft and Cancel now ask for confirmation in-app.
+- Admins can edit a completed match score until the event is completed (guarded when the next bracket round is already scored).
+- Teams are editable at any point before the tournament starts (direct Edit teams from matches-set).
+
+### Changed
+- Matches tab: the active round shows on top; fully-scored rounds fold up (tap to expand).
+- The "Tournament / STARTED" box is gone — stage now shows as a chip next to the LIVE badge; only actionable buttons remain.
+- Bottom nav: Today is first; "Users" renamed to "Players".
+
 ## [0.7.1] — 2026-08-03
 
 ### Changed

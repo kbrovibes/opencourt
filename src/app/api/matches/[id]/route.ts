@@ -4,9 +4,13 @@ import { supabase } from "@/lib/supabase";
 import { getEvent } from "@/lib/db/events";
 import { deleteMatch, recordScore, resetScore } from "@/lib/db/matches";
 
-async function matchEvent(matchId: string) {
-  const { data } = await supabase.from("oc_matches").select("event_id").eq("id", matchId).maybeSingle();
-  return data ? getEvent(data.event_id) : null;
+async function matchRow(matchId: string) {
+  const { data } = await supabase
+    .from("oc_matches")
+    .select("event_id, round, bracket_pos, status")
+    .eq("id", matchId)
+    .maybeSingle();
+  return data;
 }
 
 export async function PATCH(
@@ -19,10 +23,31 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
-  const event = await matchEvent(id);
-  if (!event) return NextResponse.json({ error: "Match not found" }, { status: 404 });
+  const match = await matchRow(id);
+  const event = match ? await getEvent(match.event_id) : null;
+  if (!match || !event) return NextResponse.json({ error: "Match not found" }, { status: 404 });
   if (event.stage !== "started") {
     return NextResponse.json({ error: "Start the tournament before entering scores" }, { status: 400 });
+  }
+  if (event.status === "completed") {
+    return NextResponse.json({ error: "Event is completed — reopen it to edit scores" }, { status: 400 });
+  }
+  // Editing a completed knockout match: block if its winner already played (and
+  // scored) the next round — that result would become nonsense.
+  if (match.status === "completed" && match.round !== null && match.bracket_pos !== null) {
+    const { data: next } = await supabase
+      .from("oc_matches")
+      .select("status")
+      .eq("event_id", match.event_id)
+      .eq("round", match.round + 1)
+      .eq("bracket_pos", Math.floor(match.bracket_pos / 2))
+      .maybeSingle();
+    if (next?.status === "completed") {
+      return NextResponse.json(
+        { error: "The next round is already scored — use Reset Scores to unwind" },
+        { status: 400 }
+      );
+    }
   }
 
   if (body.reset === true) {
