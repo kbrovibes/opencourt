@@ -7,6 +7,7 @@ interface TeamInfo {
   id: string;
   seed: number;
   label: string;
+  shortNames?: string[]; // first names, one per line in compact views
 }
 
 /* ── Progress bar ── */
@@ -129,7 +130,7 @@ export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: T
 
   return (
     <div className="overflow-x-auto -mx-1 px-1">
-      <table className="text-[11px] border-separate border-spacing-0.5 min-w-max">
+      <table className="text-[11px] border-separate border-spacing-1 min-w-max">
         <thead>
           <tr>
             <th className="text-left pr-2 font-semibold text-muted-light">Team</th>
@@ -143,18 +144,24 @@ export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: T
         <tbody>
           {teams.map((row) => (
             <tr key={row.id}>
-              <td className="pr-2 py-1 font-medium text-heading whitespace-nowrap">
-                <span className="font-mono text-muted-light text-[10px] mr-1">#{row.seed}</span>
-                {row.label}
+              <td className="pr-3 py-2 font-medium text-heading whitespace-nowrap align-middle">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-muted-light text-[10px]">#{row.seed}</span>
+                  <span className="leading-tight">
+                    {(row.shortNames ?? [row.label]).map((n) => (
+                      <span key={n} className="block">{n}</span>
+                    ))}
+                  </span>
+                </div>
               </td>
               {teams.map((col) => {
                 if (row.id === col.id) {
-                  return <td key={col.id} className="w-12 h-7 text-center bg-surface-alt rounded text-muted-lighter">—</td>;
+                  return <td key={col.id} className="w-12 h-10 text-center bg-surface-alt rounded text-muted-lighter">—</td>;
                 }
                 const c = cell.get(`${row.id}:${col.id}`);
                 if (!c) {
                   return (
-                    <td key={col.id} className="w-12 h-7 text-center bg-surface rounded border border-border-light dark:border-border text-muted-lighter">
+                    <td key={col.id} className="w-12 h-10 text-center bg-surface rounded border border-border-light dark:border-border text-muted-lighter">
                       {scheduled.has(`${row.id}:${col.id}`) ? "·" : ""}
                     </td>
                   );
@@ -162,7 +169,7 @@ export function ResultsMatrix({ matches, teams }: { matches: OcMatch[]; teams: T
                 return (
                   <td
                     key={col.id}
-                    className={`w-12 h-7 text-center rounded font-mono font-semibold ${
+                    className={`w-12 h-10 text-center rounded font-mono font-semibold ${
                       c.won
                         ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400"
                         : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"

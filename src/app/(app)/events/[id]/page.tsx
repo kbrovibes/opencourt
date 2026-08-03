@@ -47,7 +47,15 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       .filter(Boolean)
       .map((pid) => nameById.get(pid!) ?? "?")
       .join(" & ");
-  const teamOpts = teams.map((t) => ({ id: t.id, seed: t.seed, label: teamLabel(t), playerIds: [t.player1_id, t.player2_id].filter(Boolean) as string[] }));
+  const teamOpts = teams.map((t) => ({
+    id: t.id,
+    seed: t.seed,
+    label: teamLabel(t),
+    shortNames: [t.player1_id, t.player2_id]
+      .filter(Boolean)
+      .map((pid) => (nameById.get(pid!) ?? "?").split(" ")[0]),
+    playerIds: [t.player1_id, t.player2_id].filter(Boolean) as string[],
+  }));
   const labelByTeam = new Map(teamOpts.map((t) => [t.id, t.label]));
 
   const standings = computeTeamStandings(matches);
@@ -130,9 +138,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       </h2>
       <div className="bg-surface rounded-xl border border-border-light dark:border-border divide-y divide-border-light dark:divide-border">
         {teamOpts.map((t) => (
-          <div key={t.id} className="flex items-center px-4 py-2.5">
+          <div key={t.id} className="flex items-center px-4 py-3.5">
             <span className="w-8 text-xs font-mono text-muted-light">#{t.seed}</span>
-            <span className="text-sm font-medium text-heading">{t.label}</span>
+            <span className="text-sm font-medium text-heading leading-snug">
+              {t.shortNames.map((n) => (
+                <span key={n} className="block">{n}</span>
+              ))}
+            </span>
           </div>
         ))}
       </div>

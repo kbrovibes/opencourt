@@ -2,6 +2,11 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.7.1] — 2026-08-03
+
+### Changed
+- Teams list and the score grid now show team names as two lines (first names only) with roomier rows — more space for the score cells.
+
 ## [0.7.0] — 2026-08-02
 
 ### Added
