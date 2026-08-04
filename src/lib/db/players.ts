@@ -21,6 +21,11 @@ export async function listPlayers(includeDisabled = false): Promise<Player[]> {
   return data ?? [];
 }
 
+export async function getPlayer(id: string): Promise<Player | null> {
+  const { data } = await supabase.from("oc_players").select(PLAYER_COLS).eq("id", id).maybeSingle();
+  return data;
+}
+
 export async function createPlayer(name: string, email?: string | null): Promise<Player> {
   const { data, error } = await supabase
     .from("oc_players")

@@ -2,6 +2,17 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.12.0] — 2026-08-04
+
+### Added
+- Public player profiles (/players/id): identity, verified seal, skill, stat tiles, recent events — viewable by any signed-in user. Player names everywhere link to them (no underline).
+- Events home calendar: current month with event-dot days (browse back up to 12 months, forward 1); tap a date to filter events to that day, Clear to reset.
+- Past events paginate 10 at a time with a See more button.
+
+### Changed
+- Players page is a sortable table (Name / Skill / Type columns, tap headers to sort) with the check-in actions kept compact.
+- Verified mark is now an Instagram/Twitter-style blue seal.
+
 ## [0.11.2] — 2026-08-04
 
 ### Changed

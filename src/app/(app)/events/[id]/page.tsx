@@ -19,6 +19,7 @@ import BackButton from "@/components/BackButton";
 import { BracketView, MatchProgress, ResultsMatrix } from "@/components/TournamentVisuals";
 import NavLink from "@/components/NavLink";
 import CopyCheckins from "@/components/CopyCheckins";
+import VerifiedBadge from "@/components/VerifiedBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -155,11 +156,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             return (
               <div key={r.id} className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium text-heading">
+                  <NavLink
+                    href={`/players/${r.player_id}`}
+                    className="text-sm font-medium text-heading no-underline hover:text-sky-600 dark:hover:text-sky-400 transition-colors inline-flex items-center gap-1"
+                  >
                     {r.name}
-                    {r.verified && <span className="text-sky-500 dark:text-sky-400 text-xs ml-1" title="Verified — has logged in">✔</span>}
+                    {r.verified && <VerifiedBadge />}
                     {r.player_id === player.id && <span className="text-muted-light font-normal"> (you)</span>}
-                  </span>
+                  </NavLink>
                   {event.event_type === "doubles" && event.stage === "roster" && pair && (
                     <span className="text-[11px] text-muted-light">
                       {pair.mutual ? `🤝 with ${pair.label}` : `→ ${pair.label} (pending)`}

@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import SkillDots from "@/components/SkillDots";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import NavLink from "@/components/NavLink";
 import { titleCaseName } from "@/lib/format";
 
 interface EventOpt {
@@ -35,6 +37,8 @@ interface Props {
   roster: RosterRow[];
   selfId: string;
 }
+
+type SortKey = "name" | "skill" | "type" | null;
 
 const inputCls =
   "w-full px-3.5 py-2.5 bg-surface border border-stone-300 dark:border-border rounded-lg text-sm text-text placeholder:text-muted-light focus:outline-none focus:ring-2 focus:ring-sky-500";
@@ -99,7 +103,7 @@ function EditPanel({ player, isSelf, onDone, onError }: { player: PlayerRow; isS
               : "bg-surface text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800"
           }`}
         >
-          {player.isAdmin ? "🚫 Revoke admin" : "🛡 Make admin"}
+          {player.isAdmin ? "Revoke admin" : "Make admin"}
         </button>
       )}
     </div>
@@ -120,6 +124,8 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
   const [bulkText, setBulkText] = useState("");
   const [bulkResult, setBulkResult] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>(null);
+  const [sortDir, setSortDir] = useState<1 | -1>(1);
 
   const rosterMap = useMemo(() => new Map(roster.map((r) => [r.player_id, r])), [roster]);
   const disabledCount = players.filter((p) => p.disabled).length;
@@ -128,13 +134,34 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
     const q = filter.trim().toLowerCase();
     let list = players.filter((p) => (showDisabled ? p.disabled : !p.disabled));
     if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q));
-    return [...list].sort((a, b) => {
-      const ra = rosterMap.get(a.id);
-      const rb = rosterMap.get(b.id);
-      const rank = (r?: RosterRow) => (r?.checked_in_at ? 0 : r ? 1 : 2);
-      return rank(ra) - rank(rb) || a.name.localeCompare(b.name);
-    });
-  }, [players, filter, rosterMap, showDisabled]);
+    if (sortKey === "name") {
+      list = [...list].sort((a, b) => sortDir * a.name.localeCompare(b.name));
+    } else if (sortKey === "skill") {
+      list = [...list].sort((a, b) => sortDir * ((b.skill ?? 0) - (a.skill ?? 0)) || a.name.localeCompare(b.name));
+    } else if (sortKey === "type") {
+      list = [...list].sort((a, b) => sortDir * (Number(b.linked) - Number(a.linked)) || a.name.localeCompare(b.name));
+    } else {
+      // default: checked-in first, then registered, then alphabetical
+      list = [...list].sort((a, b) => {
+        const ra = rosterMap.get(a.id);
+        const rb = rosterMap.get(b.id);
+        const rank = (r?: RosterRow) => (r?.checked_in_at ? 0 : r ? 1 : 2);
+        return rank(ra) - rank(rb) || a.name.localeCompare(b.name);
+      });
+    }
+    return list;
+  }, [players, filter, rosterMap, showDisabled, sortKey, sortDir]);
+
+  function sortBy(key: Exclude<SortKey, null>) {
+    if (sortKey === key) {
+      setSortDir(sortDir === 1 ? -1 : 1);
+    } else {
+      setSortKey(key);
+      setSortDir(1);
+    }
+  }
+
+  const arrow = (key: SortKey) => (sortKey === key ? (sortDir === 1 ? " ↑" : " ↓") : "");
 
   const checkedInCount = roster.filter((r) => r.checked_in_at).length;
 
@@ -231,7 +258,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
           onClick={() => { setShowBulk((v) => !v); setShowAdd(false); }}
           className="flex-1 py-2 bg-surface-alt text-text rounded-lg text-sm font-semibold hover:bg-border-light dark:hover:bg-border transition-colors"
         >
-          {showBulk ? "Close" : "⇪ Bulk add"}
+          {showBulk ? "Close" : "Bulk add"}
         </button>
       </div>
 
@@ -275,97 +302,129 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
         onChange={(e) => setFilter(e.target.value)}
       />
 
-      {/* Player list */}
-      <div className="bg-surface rounded-xl border border-border-light dark:border-border divide-y divide-border-light dark:divide-border">
-        {filtered.length === 0 && (
-          <p className="px-4 py-3 text-sm text-muted">
-            {showDisabled ? "No disabled players." : "No players found."}
-          </p>
-        )}
-        {filtered.map((p) => {
-          const r = rosterMap.get(p.id);
-          const busy = busyId === p.id;
-          return (
-            <div key={p.id}>
-              <div className="flex items-center justify-between gap-2 px-4 py-2.5">
-                <div className="flex flex-col min-w-0">
-                  <span className={`text-sm font-medium truncate flex items-center gap-1.5 ${p.disabled ? "text-muted-light line-through" : "text-heading"}`}>
-                    {titleCaseName(p.name)}
-                    {p.linked && <span className="text-sky-500 dark:text-sky-400 text-xs" title="Verified — has logged in">✔</span>}
-                    <SkillDots level={p.skill} />
-                    {p.isAdmin && (
-                      <span className="text-[9px] font-bold tracking-wider uppercase text-red-500/80 dark:text-red-400/80 no-underline">admin</span>
-                    )}
-                    {!p.linked && <span className="text-[10px] font-semibold text-muted-lighter uppercase no-underline">manual</span>}
-                  </span>
-                  {r && (
-                    <span className={`text-[11px] ${r.checked_in_at ? "text-green-600 dark:text-green-400" : r.waitlisted ? "text-amber-600 dark:text-amber-400" : "text-muted-light"}`}>
-                      {r.checked_in_at ? "✓ Checked in" : r.waitlisted ? "Waitlist" : "Registered"}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {selectedEventId && !p.disabled && (
-                    r?.checked_in_at ? (
-                      <button
-                        onClick={() => toggleCheckin(p.id, false)}
-                        disabled={busy}
-                        className="px-3 py-1.5 bg-surface-alt text-text rounded-lg text-xs font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
+      {/* Sortable player table */}
+      <div className="bg-surface rounded-xl border border-border-light dark:border-border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-wider text-muted-light border-b border-border-light dark:border-border select-none">
+              <th className="text-left px-4 py-2 cursor-pointer" onClick={() => sortBy("name")}>
+                Name{arrow("name")}
+              </th>
+              <th className="text-left px-2 py-2 cursor-pointer" onClick={() => sortBy("skill")}>
+                Skill{arrow("skill")}
+              </th>
+              <th className="text-left px-2 py-2 cursor-pointer" onClick={() => sortBy("type")}>
+                Type{arrow("type")}
+              </th>
+              <th className="px-2 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border-light dark:divide-border">
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-3 text-sm text-muted">
+                  {showDisabled ? "No disabled players." : "No players found."}
+                </td>
+              </tr>
+            )}
+            {filtered.map((p) => {
+              const r = rosterMap.get(p.id);
+              const busy = busyId === p.id;
+              return (
+                <Fragment key={p.id}>
+                  <tr className="align-middle">
+                    <td className="px-4 py-2.5">
+                      <NavLink
+                        href={`/players/${p.id}`}
+                        className={`text-sm font-medium flex items-center gap-1.5 no-underline hover:text-sky-600 dark:hover:text-sky-400 transition-colors ${p.disabled ? "text-muted-light line-through" : "text-heading"}`}
                       >
-                        Undo
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => toggleCheckin(p.id, true)}
-                          disabled={busy}
-                          className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-500 disabled:opacity-50"
-                        >
-                          Check in
-                        </button>
-                        {r ? (
-                          <button
-                            onClick={() => toggleRegister(p.id, true)}
-                            disabled={busy}
-                            className="px-2 py-1.5 text-red-500 dark:text-red-400 rounded-lg text-xs font-semibold hover:bg-surface-alt disabled:opacity-50"
-                            title="Withdraw"
-                          >
-                            ✕
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => toggleRegister(p.id, false)}
-                            disabled={busy}
-                            className="px-2.5 py-1.5 bg-surface-alt text-text rounded-lg text-xs font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
-                            title="Register without check-in"
-                          >
-                            Reg
-                          </button>
+                        <span className="truncate max-w-36">{titleCaseName(p.name)}</span>
+                        {p.linked && <VerifiedBadge />}
+                        {p.isAdmin && (
+                          <span className="text-[9px] font-bold tracking-wider uppercase text-red-500/80 dark:text-red-400/80">admin</span>
                         )}
-                      </>
-                    )
+                      </NavLink>
+                      {r && (
+                        <span className={`block text-[11px] ${r.checked_in_at ? "text-green-600 dark:text-green-400" : r.waitlisted ? "text-amber-600 dark:text-amber-400" : "text-muted-light"}`}>
+                          {r.checked_in_at ? "Checked in" : r.waitlisted ? "Waitlist" : "Registered"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <SkillDots level={p.skill} />
+                    </td>
+                    <td className="px-2 py-2.5 text-[11px] text-muted">
+                      {p.linked ? "Account" : "Manual"}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <div className="flex items-center justify-end gap-1">
+                        {selectedEventId && !p.disabled && (
+                          r?.checked_in_at ? (
+                            <button
+                              onClick={() => toggleCheckin(p.id, false)}
+                              disabled={busy}
+                              className="px-2 py-1 bg-surface-alt text-text rounded-lg text-[11px] font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
+                            >
+                              Undo
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => toggleCheckin(p.id, true)}
+                                disabled={busy}
+                                className="px-2 py-1 bg-green-600 text-white rounded-lg text-[11px] font-semibold hover:bg-green-500 disabled:opacity-50"
+                              >
+                                In
+                              </button>
+                              {r ? (
+                                <button
+                                  onClick={() => toggleRegister(p.id, true)}
+                                  disabled={busy}
+                                  className="px-1.5 py-1 text-red-500 dark:text-red-400 rounded-lg text-[11px] font-semibold hover:bg-surface-alt disabled:opacity-50"
+                                  title="Withdraw"
+                                >
+                                  ✕
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => toggleRegister(p.id, false)}
+                                  disabled={busy}
+                                  className="px-2 py-1 bg-surface-alt text-text rounded-lg text-[11px] font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
+                                  title="Register without check-in"
+                                >
+                                  Reg
+                                </button>
+                              )}
+                            </>
+                          )
+                        )}
+                        <button
+                          onClick={() => setEditId(editId === p.id ? null : p.id)}
+                          className="px-1 py-1 text-muted hover:text-heading text-sm"
+                          title="Edit player"
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {editId === p.id && (
+                    <tr>
+                      <td colSpan={4} className="p-0">
+                        <EditPanel
+                          player={p}
+                          isSelf={p.id === selfId}
+                          onDone={() => { setEditId(null); router.refresh(); }}
+                          onError={setError}
+                        />
+                      </td>
+                    </tr>
                   )}
-                  <button
-                    onClick={() => setEditId(editId === p.id ? null : p.id)}
-                    className="px-1.5 py-1.5 text-muted hover:text-heading text-sm"
-                    title="Edit user"
-                  >
-                    ✏️
-                  </button>
-                </div>
-              </div>
-              {editId === p.id && (
-                <EditPanel
-                  player={p}
-                  isSelf={p.id === selfId}
-                  onDone={() => { setEditId(null); router.refresh(); }}
-                  onError={setError}
-                />
-              )}
-            </div>
-          );
-        })}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {/* Disabled toggle */}
