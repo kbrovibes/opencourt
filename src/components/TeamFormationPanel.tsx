@@ -197,7 +197,7 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
             disabled={busy}
             className="px-3 py-2 bg-surface-alt text-text rounded-lg text-xs font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
           >
-            🤝 Use confirmed pairs
+            Use confirmed pairs
           </button>
         ) : (
           <button
@@ -205,7 +205,7 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
             disabled={busy}
             className="px-3 py-2 bg-surface-alt text-text rounded-lg text-xs font-semibold hover:bg-border-light dark:hover:bg-border disabled:opacity-50"
           >
-            ⚡ Add all checked-in
+            Add all checked-in
           </button>
         )}
         {teams.length > 0 && (
@@ -226,7 +226,7 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
         >
           {busy
             ? "Saving…"
-            : `💾 Save changes${pending.length ? ` · +${pending.length}` : ""}${pendingDeletes.size ? ` · −${pendingDeletes.size}` : ""}`}
+            : `Save changes${pending.length ? ` · +${pending.length}` : ""}${pendingDeletes.size ? ` · −${pendingDeletes.size}` : ""}`}
         </button>
       )}
       {dirty && (

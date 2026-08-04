@@ -3,7 +3,7 @@ import type { EventStatus } from "@/lib/db/events";
 const STYLES: Record<EventStatus, string> = {
   live: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
   draft: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  completed: "bg-stone-100 text-stone-600 dark:bg-white/10 dark:text-neutral-400",
+  completed: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400",
   cancelled: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
 };
 

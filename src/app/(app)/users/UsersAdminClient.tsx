@@ -291,6 +291,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
                 <div className="flex flex-col min-w-0">
                   <span className={`text-sm font-medium truncate flex items-center gap-1.5 ${p.disabled ? "text-muted-light line-through" : "text-heading"}`}>
                     {titleCaseName(p.name)}
+                    {p.linked && <span className="text-sky-500 dark:text-sky-400 text-xs" title="Verified — has logged in">✔</span>}
                     <SkillDots level={p.skill} />
                     {p.isAdmin && (
                       <span className="text-[9px] font-bold tracking-wider uppercase text-red-500/80 dark:text-red-400/80 no-underline">admin</span>

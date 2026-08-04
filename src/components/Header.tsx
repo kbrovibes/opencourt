@@ -10,9 +10,10 @@ import { useTheme } from "@/components/ThemeProvider";
 interface HeaderProps {
   userName: string;
   isAdmin: boolean;
+  appVersion: string;
 }
 
-export default function Header({ userName, isAdmin }: HeaderProps) {
+export default function Header({ userName, isAdmin, appVersion }: HeaderProps) {
   const router = useRouter();
   const { startLoading } = useNavigationLoader();
   const { theme, setTheme } = useTheme();
@@ -50,8 +51,13 @@ export default function Header({ userName, isAdmin }: HeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center px-4 h-14 bg-surface dark:bg-background">
       {/* Centered logo */}
-      <NavLink href="/" className="flex flex-col items-center leading-tight">
-        <span className="font-bold text-heading text-2xl tracking-tight">OpenCourt</span>
+      <NavLink href="/" className="relative flex flex-col items-center leading-tight">
+        <span className="font-bold text-heading text-2xl tracking-tight">
+          OpenCourt
+          {isAdmin && (
+            <span className="absolute -right-7 top-1 text-[9px] font-mono font-normal text-muted-light">v{appVersion}</span>
+          )}
+        </span>
         <span className="font-black text-heading text-[13px] tracking-[0.25em] uppercase -mt-0.5">Badminton</span>
       </NavLink>
 

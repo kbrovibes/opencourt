@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useNavigationLoader } from "@/components/NavigationLoader";
 import LocationPicker from "@/components/LocationPicker";
 import { to24h } from "@/lib/format";
+import { FORMAT_OPTIONS } from "@/lib/formats";
 import type { OcEvent } from "@/lib/db/events";
 
 const inputCls =
@@ -29,10 +30,12 @@ export default function EditEventForm({ event, quickPicks }: { event: OcEvent; q
   const [checkinOpensAt, setCheckinOpensAt] = useState(toLocalDatetime(event.checkin_opens_at));
   const [location, setLocation] = useState(event.location ?? "");
   const [notes, setNotes] = useState(event.notes ?? "");
+  const [matchFormat, setMatchFormat] = useState<string>(event.match_format ?? "later");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const typeLocked = event.stage !== "roster"; // teams may exist beyond roster stage
+  const formatLocked = event.stage === "matches_set" || event.stage === "started";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,6 +53,7 @@ export default function EditEventForm({ event, quickPicks }: { event: OcEvent; q
         checkin_opens_at: checkinOpensAt ? new Date(checkinOpensAt).toISOString() : null,
         location: location.trim() || null,
         notes: notes.trim() || null,
+        ...(formatLocked ? {} : { match_format: matchFormat === "later" ? null : matchFormat }),
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -102,6 +106,16 @@ export default function EditEventForm({ event, quickPicks }: { event: OcEvent; q
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>Max players</label>
         <input type="number" min={2} max={500} className={inputCls} value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} required />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className={labelCls}>Tournament format {formatLocked && <span className="normal-case text-muted-lighter">(matches already set up)</span>}</label>
+        <select value={matchFormat} onChange={(e) => setMatchFormat(e.target.value)} disabled={formatLocked} className={`${inputCls} disabled:opacity-50`}>
+          {FORMAT_OPTIONS.map((f) => (
+            <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+          <option value="later">Choose later</option>
+        </select>
       </div>
 
       <div className="flex flex-col gap-1.5">

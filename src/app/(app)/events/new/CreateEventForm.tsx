@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigationLoader } from "@/components/NavigationLoader";
 import LocationPicker from "@/components/LocationPicker";
+import { FORMAT_OPTIONS } from "@/lib/formats";
 
 const inputCls =
   "w-full h-11 px-3.5 bg-surface border border-stone-300 dark:border-border rounded-lg text-sm text-text placeholder:text-muted-light focus:outline-none focus:ring-2 focus:ring-sky-500";
@@ -18,6 +19,7 @@ export default function CreateEventForm({ quickPicks }: { quickPicks: string[] }
   const [eventType, setEventType] = useState<"singles" | "doubles">("doubles");
   const [maxPlayers, setMaxPlayers] = useState("32");
   const [status, setStatus] = useState<"draft" | "live">("live");
+  const [matchFormat, setMatchFormat] = useState<string>("groups");
   const [checkinOpensAt, setCheckinOpensAt] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
@@ -41,6 +43,7 @@ export default function CreateEventForm({ quickPicks }: { quickPicks: string[] }
         checkin_opens_at: checkinOpensAt ? new Date(checkinOpensAt).toISOString() : null,
         location,
         notes,
+        match_format: matchFormat === "later" ? null : matchFormat,
       }),
     });
     const data = await res.json();
@@ -111,6 +114,16 @@ export default function CreateEventForm({ quickPicks }: { quickPicks: string[] }
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className={labelCls}>Tournament format</label>
+        <select value={matchFormat} onChange={(e) => setMatchFormat(e.target.value)} className={inputCls}>
+          {FORMAT_OPTIONS.map((f) => (
+            <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+          <option value="later">Choose later</option>
+        </select>
       </div>
 
       <div className="flex flex-col gap-1.5">

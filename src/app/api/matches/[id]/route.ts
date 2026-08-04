@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { supabase } from "@/lib/supabase";
-import { getEvent } from "@/lib/db/events";
-import { deleteMatch, recordScore, resetScore } from "@/lib/db/matches";
+import { getEvent, updateEvent } from "@/lib/db/events";
+import { deleteMatch, finalsClinched, listMatches, recordScore, resetScore } from "@/lib/db/matches";
 
 async function matchRow(matchId: string) {
   const { data } = await supabase
@@ -70,6 +70,15 @@ export async function PATCH(
 
   try {
     await recordScore(id, t1, t2);
+    // Auto-complete: every match scored AND a knockout final has been clinched
+    // (manual/group-only events are left open — playoffs may still be added).
+    if (event.match_format !== "manual") {
+      const all = await listMatches(event.id);
+      if (all.length > 0 && all.every((m) => m.status === "completed") && finalsClinched(all)) {
+        await updateEvent(event.id, { status: "completed" });
+        return NextResponse.json({ ok: true, completed: true });
+      }
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

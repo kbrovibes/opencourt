@@ -447,6 +447,22 @@ export async function generateGroupKnockout(
   }
 }
 
+/** True when a knockout final exists and one team has clinched the series. */
+export function finalsClinched(matches: OcMatch[]): boolean {
+  const knockout = matches.filter((m) => m.round !== null && m.bracket_pos !== null);
+  if (knockout.length === 0) return false;
+  const maxKR = Math.max(...knockout.map((m) => m.round!));
+  const finals = knockout.filter((m) => m.round === maxKR);
+  const need = Math.floor(finals.length / 2) + 1;
+  const wins = new Map<string, number>();
+  for (const f of finals) {
+    if (f.status !== "completed" || !f.winning_team) continue;
+    const w = f.winning_team === 1 ? f.team1_id : f.team2_id;
+    if (w) wins.set(w, (wins.get(w) ?? 0) + 1);
+  }
+  return [...wins.values()].some((v) => v >= need);
+}
+
 export interface TeamStanding {
   teamId: string;
   wins: number;

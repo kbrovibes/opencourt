@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   if (response) return response;
 
   const body = await request.json();
-  const { name, event_date, start_time, event_type, max_players, status, checkin_opens_at, location, notes } = body;
+  const { name, event_date, start_time, event_type, max_players, status, checkin_opens_at, location, notes, match_format } = body;
 
   if (!name?.trim() || !event_date) {
     return NextResponse.json({ error: "Name and date are required" }, { status: 400 });
@@ -17,6 +17,9 @@ export async function POST(request: NextRequest) {
   }
   if (!["draft", "live"].includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+  if (match_format != null && !["manual", "single_elim", "round_robin", "fixed_rounds", "groups"].includes(match_format)) {
+    return NextResponse.json({ error: "Invalid format" }, { status: 400 });
   }
   const max = parseInt(max_players, 10);
   if (!Number.isFinite(max) || max < 2 || max > 500) {
@@ -34,6 +37,7 @@ export async function POST(request: NextRequest) {
       checkin_opens_at: checkin_opens_at || null,
       location: location?.trim() || null,
       notes: notes?.trim() || null,
+      match_format: match_format ?? null,
       created_by: player.id,
     });
     return NextResponse.json({ event });

@@ -6,9 +6,9 @@ import { useNavigationLoader } from "@/components/NavigationLoader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import type { OcEvent, EventStatus } from "@/lib/db/events";
 
-type PendingAction = "draft" | "cancel" | null;
+type PendingAction = "draft" | "cancel" | "complete" | null;
 
-export default function EventAdminControls({ event, canUnstart, canStart }: { event: OcEvent; canUnstart: boolean; canStart: boolean }) {
+export default function EventAdminControls({ event, canUnstart, canStart, pendingMatches }: { event: OcEvent; canUnstart: boolean; canStart: boolean; pendingMatches: number }) {
   const router = useRouter();
   const { startLoading } = useNavigationLoader();
   const [busy, setBusy] = useState(false);
@@ -115,21 +115,21 @@ export default function EventAdminControls({ event, canUnstart, canStart }: { ev
       {/* Uniform grid — every action the same width */}
       <div className="grid grid-cols-3 gap-1.5">
         {event.status === "draft" &&
-          btn("🚀 Go Live", () => setStatus("live"), "bg-green-600 text-white hover:bg-green-500")}
+          btn("Go Live", () => setStatus("live"), "bg-green-600 text-white hover:bg-green-500")}
         {event.status === "live" && [
-          btn("✅ Complete", () => setStatus("completed"), "bg-stone-900 dark:bg-sky-600 text-white hover:bg-stone-800 dark:hover:bg-sky-500", "complete"),
+          btn("Complete", () => setPending("complete"), "bg-green-600 text-white hover:bg-green-500", "complete"),
           ...(canStart
-            ? [btn("🚀 Start", () => setStage("started"), "bg-green-600 text-white hover:bg-green-500", "start")]
+            ? [btn("Start", () => setStage("started"), "bg-sky-600 text-white hover:bg-sky-500", "start")]
             : []),
-          btn("↩︎ Draft", () => setPending("draft"), "bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border", "todraft"),
+          btn("To Draft", () => setPending("draft"), "bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border", "todraft"),
         ]}
         {(event.status === "completed" || event.status === "cancelled") &&
-          btn("🔄 Reopen", () => setStatus("live"), "bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border")}
+          btn("Reopen", () => setStatus("live"), "bg-amber-600 text-white hover:bg-amber-500")}
         {event.status !== "cancelled" && event.status !== "completed" &&
           btn("Cancel", () => setPending("cancel"), "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20")}
-        {btn("⧉ Copy to New", copyToNew, "bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border")}
+        {btn("Copy to New", copyToNew, "bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border")}
         {canUnstart &&
-          btn("⏸ Un-start", unstart, "bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border")}
+          btn("Un-start", unstart, "bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border")}
         <button
           onClick={deleteEvent}
           disabled={busy}
@@ -140,11 +140,24 @@ export default function EventAdminControls({ event, canUnstart, canStart }: { ev
           }`}
           title="Delete event (recoverable from the database)"
         >
-          {confirmDelete ? "Really?" : "🗑 Delete"}
+          {confirmDelete ? "Really?" : "Delete"}
         </button>
       </div>
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
+      <ConfirmDialog
+        open={pending === "complete"}
+        title="Complete this event?"
+        message={
+          pendingMatches > 0
+            ? `${pendingMatches} match${pendingMatches > 1 ? "es are" : " is"} still unfinished. Completing closes the event and shows the final summary.`
+            : "All matches are done. Completing closes the event and shows the final summary."
+        }
+        confirmLabel="Complete event"
+        busy={busy}
+        onConfirm={() => setStatus("completed")}
+        onClose={() => setPending(null)}
+      />
       <ConfirmDialog
         open={pending === "draft"}
         title="Back to draft?"

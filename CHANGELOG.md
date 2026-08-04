@@ -2,6 +2,20 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.11.0] — 2026-08-04
+
+### Added
+- Tournament format is now chosen at event creation (or "Choose later"); editable in Edit Event until matches are set up. The setup panel shows the chosen format with a Change link.
+- Auto-complete: when every match is scored and the final is clinched, the event completes itself and shows the summary.
+- Closed-event banner gains a fun-stats row: Biggest win, Closest match, Most points.
+- Verified ✔ tick on any player who has actually logged in (visible to everyone).
+- Profile stats now include Titles (events won — the only trophy) alongside match Wins; five-tile row.
+- Admins see the app version in small type next to the title, always current per deploy.
+
+### Changed
+- Complete is a green confirmed action — the popup calls out any unfinished matches; Reopen is amber; Start is blue; emojis removed from action buttons.
+- Event cards show the venue; COMPLETED badge is blue instead of grey.
+
 ## [0.10.1] — 2026-08-04
 
 ### Changed

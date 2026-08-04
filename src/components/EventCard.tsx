@@ -18,6 +18,9 @@ export default function EventCard({ event, count }: { event: OcEvent; count: num
         <span className="capitalize">{event.event_type === "doubles" ? "🤝 Doubles" : "🏸 Singles"}</span>
         <span>👥 {count}/{event.max_players}</span>
       </div>
+      {event.location && (
+        <div className="mt-1 text-xs text-muted-light truncate">📍 {event.location}</div>
+      )}
     </NavLink>
   );
 }

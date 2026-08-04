@@ -57,7 +57,7 @@ export default function CopyCheckins({ eventId, sourceName, players }: Props) {
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-alt transition-colors"
       >
         <span className="text-sm font-semibold text-heading">
-          ⧉ Check in players from “{sourceName}”
+          Check in players from “{sourceName}”
         </span>
         <span className="text-xs text-muted-light">{open ? "▲" : `${players.length} ▼`}</span>
       </button>
@@ -95,7 +95,7 @@ export default function CopyCheckins({ eventId, sourceName, players }: Props) {
               disabled={busy || selected.size === 0}
               className="ml-auto px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-500 disabled:opacity-50 transition-colors"
             >
-              {busy ? "Checking in…" : `✓ Check in (${selected.size})`}
+              {busy ? "Checking in…" : `Check in (${selected.size})`}
             </button>
           </div>
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}

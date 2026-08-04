@@ -74,7 +74,7 @@ export default function MyEventActions({ eventId, registered, checkedIn, waitlis
             disabled={busy}
             className="flex-1 py-3 bg-green-600 text-white rounded-xl font-semibold text-sm shadow-sm hover:bg-green-500 disabled:opacity-50 transition-colors"
           >
-            ✓ Check in
+            Check in
           </button>
         )}
 

@@ -120,16 +120,17 @@ export default function ProfileClient({ name, email, isAdmin, version, skill, st
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
         {[
           { emoji: "🏟", val: stats.tournamentsPlayed, label: "Events" },
+          { emoji: "🏆", val: stats.eventsWon, label: "Titles" },
           { emoji: "🎯", val: stats.matchesPlayed, label: "Matches" },
-          { emoji: "🏆", val: stats.matchesWon, label: "Wins" },
+          { emoji: "🎖", val: stats.matchesWon, label: "Wins" },
           { emoji: "📈", val: stats.matchesPlayed > 0 ? `${Math.round((stats.matchesWon / stats.matchesPlayed) * 100)}%` : "—", label: "Win rate" },
         ].map(({ emoji, val, label }) => (
           <div key={label} className="bg-surface rounded-xl border border-border-light dark:border-border py-2.5 flex flex-col items-center gap-0.5">
             <span className="text-base leading-none">{emoji}</span>
-            <span className="text-lg font-bold text-heading leading-none">{val}</span>
+            <span className="text-base font-bold text-heading leading-none">{val}</span>
             <span className="text-[10px] font-semibold text-muted-light">{label}</span>
           </div>
         ))}

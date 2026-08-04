@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { FORMAT_OPTIONS, FORMAT_LABEL } from "@/lib/formats";
 import type { EventStage, EventType, MatchFormat } from "@/lib/db/events";
 
 interface Props {
@@ -16,14 +17,6 @@ interface Props {
   groupPending: number;       // pending group matches
 }
 
-const FORMATS: { value: MatchFormat; label: string; hint: string }[] = [
-  { value: "groups", label: "🌍 Groups + knockout", hint: "FIFA style — split into groups, round robin inside, top 2 cross into a knockout" },
-  { value: "fixed_rounds", label: "🔄 Fixed rounds", hint: "Everyone plays the same number of matches; add playoffs at the end" },
-  { value: "round_robin", label: "🔁 Round robin", hint: "Every team plays every other team (one big group); best record wins" },
-  { value: "single_elim", label: "🏆 Single elimination", hint: "Pure knockout — losers are out. Fairest with 4, 8 or 16 teams" },
-  { value: "manual", label: "✍️ Manual", hint: "You create each team-vs-team match yourself" },
-];
-
 const isPow2 = (n: number) => n > 0 && (n & (n - 1)) === 0;
 
 export default function StagePanel({ eventId, stage, eventType, matchFormat, teamsCount, hasCompletedMatches, hasKnockout, groupPending }: Props) {
@@ -31,6 +24,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [format, setFormat] = useState<MatchFormat>(matchFormat ?? (teamsCount >= 4 ? "groups" : "fixed_rounds"));
+  const [showPicker, setShowPicker] = useState(matchFormat == null);
   const [numGroups, setNumGroups] = useState("2");
   const [roundsPerTeam, setRoundsPerTeam] = useState("3");
   const [pendingReset, setPendingReset] = useState<"scores" | "event" | null>(null);
@@ -63,7 +57,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
     <div className="flex flex-col gap-2.5">
       {stage === "roster" && (
         <button onClick={() => setStage("team_formation")} disabled={busy} className={`${primary} bg-sky-600 hover:bg-sky-500`}>
-          👥 Start team formation
+          Start team formation
         </button>
       )}
 
@@ -74,18 +68,28 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
             disabled={busy || teamsCount < 2}
             className={`${primary} bg-green-600 hover:bg-green-500`}
           >
-            🔒 Finalize teams ({teamsCount})
+            Finalize teams ({teamsCount})
           </button>
           <button onClick={() => setStage("roster")} disabled={busy} className={secondary}>
-            ↩︎ Back
+            Back
           </button>
         </div>
       )}
 
       {stage === "teams_locked" && (
         <>
+          {!showPicker ? (
+            <div className="flex items-center justify-between px-1">
+              <span className="text-sm text-text">
+                Format: <span className="font-semibold text-heading">{FORMAT_LABEL[format]}</span>
+              </span>
+              <button onClick={() => setShowPicker(true)} className="text-xs font-semibold text-sky-600 dark:text-sky-400">
+                Change
+              </button>
+            </div>
+          ) : (
           <div className="flex flex-col gap-1.5">
-            {FORMATS.map((f) => (
+            {FORMAT_OPTIONS.map((f) => (
               <button
                 key={f.value}
                 onClick={() => setFormat(f.value)}
@@ -100,6 +104,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
               </button>
             ))}
           </div>
+          )}
           {format === "single_elim" && (
             <div className="flex items-center justify-between px-1">
             <label className="text-xs text-text">Final — best of</label>
@@ -164,10 +169,10 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
               disabled={busy}
               className={`${primary} bg-sky-600 hover:bg-sky-500`}
             >
-              ⚡ Set up matches
+              Set up matches
             </button>
             <button onClick={() => setStage("team_formation")} disabled={busy} className={secondary}>
-              ✏️ Edit teams
+              Edit teams
             </button>
           </div>
         </>
@@ -176,10 +181,10 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
       {stage === "matches_set" && (
         <div className="flex gap-2">
           <button onClick={() => setStage("teams_locked")} disabled={busy} className={`flex-1 ${secondary}`} title="Discards generated matches">
-            ↩︎ Change format
+            Change format
           </button>
           <button onClick={() => setStage("team_formation")} disabled={busy} className={`flex-1 ${secondary}`} title="Discards generated matches">
-            ✏️ Edit teams
+            Edit teams
           </button>
         </div>
       )}
@@ -213,7 +218,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
                   disabled={busy}
                   className={`${primary} bg-amber-600 hover:bg-amber-500`}
                 >
-                  🏆 Generate knockout (top 2 per group)
+                  Generate knockout (top 2 per group)
                 </button>
               ) : (
               <div className="flex gap-2">
@@ -222,7 +227,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
                   disabled={busy}
                   className={`${primary} bg-amber-600 hover:bg-amber-500`}
                 >
-                  🏆 Final (top 2)
+                  Final (top 2)
                 </button>
                 {teamsCount >= 4 && (
                   <button
@@ -230,7 +235,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
                     disabled={busy}
                     className={`${primary} bg-amber-600 hover:bg-amber-500`}
                   >
-                    🏆 Semis + Final (top 4)
+                    Semis + Final (top 4)
                   </button>
                 )}
               </div>
@@ -248,14 +253,14 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
               disabled={busy || !hasCompletedMatches}
               className={`flex-1 py-2 rounded-lg text-xs font-semibold bg-surface-alt text-amber-600 dark:text-amber-400 hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-40`}
             >
-              ↺ Reset scores
+              Reset scores
             </button>
             <button
               onClick={() => setPendingReset("event")}
               disabled={busy}
               className={`flex-1 py-2 rounded-lg text-xs font-semibold bg-surface-alt text-red-600 dark:text-red-400 hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-40`}
             >
-              ⟲ Reset event
+              Reset event
             </button>
           </div>
         </>

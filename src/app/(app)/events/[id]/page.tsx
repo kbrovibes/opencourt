@@ -116,6 +116,30 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   const inTournament = event.stage === "matches_set" || event.stage === "started";
 
+  // Interesting one-day stats for the closed banner
+  const decided = matches.filter(
+    (m) => m.status === "completed" && m.team1_id && m.team2_id && m.team1_score !== null && m.team2_score !== null
+  );
+  let funStats: { emoji: string; val: string; label: string; sub?: string }[] = [];
+  if (decided.length > 0) {
+    const margin = (m: (typeof decided)[number]) => Math.abs(m.team1_score! - m.team2_score!);
+    const biggest = [...decided].sort((a, b) => margin(b) - margin(a))[0];
+    const closest = [...decided].sort((a, b) => margin(a) - margin(b))[0];
+    const pointsByTeam = new Map<string, number>();
+    for (const m of decided) {
+      pointsByTeam.set(m.team1_id!, (pointsByTeam.get(m.team1_id!) ?? 0) + m.team1_score!);
+      pointsByTeam.set(m.team2_id!, (pointsByTeam.get(m.team2_id!) ?? 0) + m.team2_score!);
+    }
+    const scorer = [...pointsByTeam.entries()].sort((a, b) => b[1] - a[1])[0];
+    const winnerOf = (m: (typeof decided)[number]) =>
+      labelByTeam.get((m.winning_team === 1 ? m.team1_id : m.team2_id)!) ?? "?";
+    funStats = [
+      { emoji: "💪", val: `+${margin(biggest)}`, label: "Biggest win", sub: winnerOf(biggest) },
+      { emoji: "😮‍💨", val: `${closest.team1_score}–${closest.team2_score}`, label: "Closest match", sub: `${labelByTeam.get(closest.team1_id!) ?? "?"} vs ${labelByTeam.get(closest.team2_id!) ?? "?"}` },
+      { emoji: "🔥", val: String(scorer[1]), label: "Most points", sub: labelByTeam.get(scorer[0]) ?? "?" },
+    ];
+  }
+
   const rosterSection = (
     <section>
       <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-light px-1 mb-2">
@@ -132,6 +156,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-heading">
                     {r.name}
+                    {r.verified && <span className="text-sky-500 dark:text-sky-400 text-xs ml-1" title="Verified — has logged in">✔</span>}
                     {r.player_id === player.id && <span className="text-muted-light font-normal"> (you)</span>}
                   </span>
                   {event.event_type === "doubles" && event.stage === "roster" && pair && (
@@ -289,6 +314,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </div>
             ))}
           </div>
+          {funStats.length === 3 && (
+            <div className="grid grid-cols-3 gap-2">
+              {funStats.map(({ emoji, val, label, sub }) => (
+                <div key={label} className="bg-surface-alt rounded-lg py-2 px-1 flex flex-col items-center gap-0.5">
+                  <span className="text-base leading-none">{emoji}</span>
+                  <span className="text-sm font-bold text-heading leading-none">{val}</span>
+                  <span className="text-[10px] font-semibold text-muted-light">{label}</span>
+                  {sub && <span className="text-[9px] text-muted-lighter max-w-full truncate px-1">{sub}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -325,7 +362,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         {event.notes && <p className="text-[13px] text-text whitespace-pre-wrap">{event.notes}</p>}
       </div>
 
-      {player.isAdmin && <EventAdminControls event={event} canUnstart={event.stage === "started" && !matches.some((m) => m.status === "completed")} canStart={event.stage === "matches_set"} />}
+      {player.isAdmin && <EventAdminControls event={event} canUnstart={event.stage === "started" && !matches.some((m) => m.status === "completed")} canStart={event.stage === "matches_set"} pendingMatches={matches.filter((m) => m.status !== "completed").length} />}
       {copySource && (
         <CopyCheckins eventId={event.id} sourceName={copySource.name} players={copySource.players} />
       )}

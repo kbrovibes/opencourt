@@ -38,6 +38,7 @@ export interface RosterEntry {
   id: string;               // oc_event_players row id
   player_id: string;
   name: string;
+  verified: boolean;        // has a real login (google/auth)
   registered_at: string;
   checked_in_at: string | null;
   partner_id: string | null;
@@ -105,6 +106,7 @@ export interface CreateEventInput {
   notes?: string | null;
   created_by: string;
   copied_from?: string | null;
+  match_format?: MatchFormat | null;
 }
 
 export async function createEvent(input: CreateEventInput): Promise<OcEvent> {
@@ -164,19 +166,20 @@ export async function softDeleteEvent(id: string): Promise<void> {
 export async function getRoster(event: OcEvent): Promise<RosterEntry[]> {
   const { data, error } = await supabase
     .from("oc_event_players")
-    .select("id, player_id, registered_at, checked_in_at, withdrawn_at, partner_id, oc_players!oc_event_players_player_id_fkey(name)")
+    .select("id, player_id, registered_at, checked_in_at, withdrawn_at, partner_id, oc_players!oc_event_players_player_id_fkey(name, user_id)")
     .eq("event_id", event.id)
     .is("withdrawn_at", null)
     .order("registered_at");
   if (error) throw error;
 
   return (data ?? []).map((row, idx) => {
-    const playerRel = row.oc_players as unknown as { name: string } | { name: string }[] | null;
-    const name = Array.isArray(playerRel) ? playerRel[0]?.name : playerRel?.name;
+    const playerRel = row.oc_players as unknown as { name: string; user_id: string | null } | { name: string; user_id: string | null }[] | null;
+    const rel = Array.isArray(playerRel) ? playerRel[0] : playerRel;
     return {
       id: row.id,
       player_id: row.player_id,
-      name: titleCaseName(name ?? "?"),
+      name: titleCaseName(rel?.name ?? "?"),
+      verified: !!rel?.user_id,
       registered_at: row.registered_at,
       checked_in_at: row.checked_in_at,
       partner_id: row.partner_id,

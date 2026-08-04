@@ -4,7 +4,7 @@ import { getEvent, softDeleteEvent, updateEvent } from "@/lib/db/events";
 
 const EDITABLE = new Set([
   "name", "event_date", "start_time", "event_type", "max_players",
-  "status", "checkin_opens_at", "location", "notes",
+  "status", "checkin_opens_at", "location", "notes", "match_format",
 ]);
 
 export async function PATCH(
@@ -25,6 +25,14 @@ export async function PATCH(
   }
   if (fields.status && !["draft", "live", "completed", "cancelled"].includes(fields.status as string)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+  if ("match_format" in fields) {
+    if (fields.match_format != null && !["manual", "single_elim", "round_robin", "fixed_rounds", "groups"].includes(fields.match_format as string)) {
+      return NextResponse.json({ error: "Invalid format" }, { status: 400 });
+    }
+    if (event.stage === "matches_set" || event.stage === "started") {
+      return NextResponse.json({ error: "Matches are already set up — change the format from the tournament panel" }, { status: 400 });
+    }
   }
 
   try {
