@@ -3,6 +3,7 @@ import { supabase as serviceClient } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { getAuthPlayer } from "@/lib/auth";
 import { getMyCheckedInLiveEventId } from "@/lib/db/events";
+import { titleCaseName } from "@/lib/format";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import NavigationLoader from "@/components/NavigationLoader";
@@ -67,7 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <NavigationLoader>
       <div className="flex flex-col min-h-screen bg-background">
-        <Header userName={player.name ?? "Player"} isAdmin={player.isAdmin} />
+        <Header userName={titleCaseName(player.name ?? "Player")} isAdmin={player.isAdmin} />
         {/* pt-14 clears the fixed header, pb-16 clears the fixed bottom nav */}
         <main className="flex-1 pt-14 pb-16">
           {children}

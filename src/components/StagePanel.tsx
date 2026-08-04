@@ -17,17 +17,21 @@ interface Props {
 }
 
 const FORMATS: { value: MatchFormat; label: string; hint: string }[] = [
+  { value: "groups", label: "🌍 Groups + knockout", hint: "FIFA style — split into groups, round robin inside, top 2 cross into a knockout" },
   { value: "fixed_rounds", label: "🔄 Fixed rounds", hint: "Everyone plays the same number of matches; add playoffs at the end" },
-  { value: "round_robin", label: "🔁 Round robin", hint: "Every team plays every other team; best record wins" },
-  { value: "single_elim", label: "🏆 Single elimination", hint: "Knockout bracket — losers are out, winners advance to the final" },
+  { value: "round_robin", label: "🔁 Round robin", hint: "Every team plays every other team (one big group); best record wins" },
+  { value: "single_elim", label: "🏆 Single elimination", hint: "Pure knockout — losers are out. Fairest with 4, 8 or 16 teams" },
   { value: "manual", label: "✍️ Manual", hint: "You create each team-vs-team match yourself" },
 ];
+
+const isPow2 = (n: number) => n > 0 && (n & (n - 1)) === 0;
 
 export default function StagePanel({ eventId, stage, eventType, matchFormat, teamsCount, hasCompletedMatches, hasKnockout, groupPending }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [format, setFormat] = useState<MatchFormat>(matchFormat ?? "fixed_rounds");
+  const [format, setFormat] = useState<MatchFormat>(matchFormat ?? (teamsCount >= 4 ? "groups" : "fixed_rounds"));
+  const [numGroups, setNumGroups] = useState("2");
   const [roundsPerTeam, setRoundsPerTeam] = useState("3");
   const [pendingReset, setPendingReset] = useState<"scores" | "event" | null>(null);
   const [bestOf, setBestOf] = useState("1");
@@ -53,7 +57,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
   const primary = "flex-1 py-2 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-50";
   const secondary = "py-2 px-3 rounded-lg text-xs font-semibold bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border transition-colors disabled:opacity-50";
 
-  const groupFormat = matchFormat === "round_robin" || matchFormat === "fixed_rounds" || matchFormat === "manual";
+  const groupFormat = matchFormat === "round_robin" || matchFormat === "fixed_rounds" || matchFormat === "manual" || matchFormat === "groups";
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -115,6 +119,32 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
             </div>
             </div>
           )}
+          {format === "groups" && (
+            <div className="flex items-center justify-between px-1">
+              <label className="text-xs text-text">Number of groups</label>
+              <div className="flex bg-surface-alt rounded-lg p-0.5">
+                {["2", "4"].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={parseInt(n, 10) * 2 > teamsCount}
+                    onClick={() => setNumGroups(n)}
+                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors disabled:opacity-30 ${
+                      numGroups === n ? "bg-surface text-heading shadow-sm" : "text-text-light hover:text-text"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {format === "single_elim" && !isPow2(teamsCount) && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 px-1">
+              ⚠ {teamsCount} teams don&apos;t fill a bracket — a random draw gives some teams a first-round bye.
+              Groups + knockout keeps play even for everyone.
+            </p>
+          )}
           {format === "fixed_rounds" && (
             <div className="flex items-center justify-between px-1">
               <label className="text-sm text-text">Matches per team</label>
@@ -130,7 +160,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
           )}
           <div className="flex gap-2">
             <button
-              onClick={() => post(`/api/events/${eventId}/generate-matches`, { format, rounds_per_team: roundsPerTeam, finals_best_of: bestOf })}
+              onClick={() => post(`/api/events/${eventId}/generate-matches`, { format, rounds_per_team: roundsPerTeam, finals_best_of: bestOf, num_groups: numGroups })}
               disabled={busy}
               className={`${primary} bg-sky-600 hover:bg-sky-500`}
             >
@@ -145,13 +175,10 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
 
       {stage === "matches_set" && (
         <div className="flex gap-2">
-          <button onClick={() => setStage("started")} disabled={busy} className={`${primary} bg-green-600 hover:bg-green-500`}>
-            🚀 Start tournament
-          </button>
-          <button onClick={() => setStage("teams_locked")} disabled={busy} className={secondary} title="Discards generated matches">
+          <button onClick={() => setStage("teams_locked")} disabled={busy} className={`flex-1 ${secondary}`} title="Discards generated matches">
             ↩︎ Change format
           </button>
-          <button onClick={() => setStage("team_formation")} disabled={busy} className={secondary} title="Discards generated matches">
+          <button onClick={() => setStage("team_formation")} disabled={busy} className={`flex-1 ${secondary}`} title="Discards generated matches">
             ✏️ Edit teams
           </button>
         </div>
@@ -180,6 +207,15 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
                   ))}
                 </div>
               </div>
+              {matchFormat === "groups" ? (
+                <button
+                  onClick={() => post(`/api/events/${eventId}/playoffs`, { best_of: bestOf })}
+                  disabled={busy}
+                  className={`${primary} bg-amber-600 hover:bg-amber-500`}
+                >
+                  🏆 Generate knockout (top 2 per group)
+                </button>
+              ) : (
               <div className="flex gap-2">
                 <button
                   onClick={() => post(`/api/events/${eventId}/playoffs`, { size: 2, best_of: bestOf })}
@@ -198,6 +234,7 @@ export default function StagePanel({ eventId, stage, eventType, matchFormat, tea
                   </button>
                 )}
               </div>
+              )}
               </div>
             ) : groupPending > 0 ? (
               <p className="text-[11px] text-muted-light px-1">

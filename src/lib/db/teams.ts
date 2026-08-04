@@ -8,10 +8,11 @@ export interface OcTeam {
   player1_id: string;
   player2_id: string | null;
   seed: number;
+  group_no: number | null;
   created_at: string;
 }
 
-const TEAM_COLS = "id, event_id, player1_id, player2_id, seed, created_at";
+const TEAM_COLS = "id, event_id, player1_id, player2_id, seed, group_no, created_at";
 
 export async function listTeams(eventId: string): Promise<OcTeam[]> {
   const { data, error } = await supabase

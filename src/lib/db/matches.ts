@@ -10,6 +10,7 @@ export interface OcMatch {
   team2_id: string | null;
   round: number | null;
   bracket_pos: number | null;
+  group_no: number | null;
   team1_player1_id: string | null;
   team1_player2_id: string | null;
   team2_player1_id: string | null;
@@ -24,7 +25,7 @@ export interface OcMatch {
 }
 
 const MATCH_COLS =
-  "id, event_id, match_type, team1_id, team2_id, round, bracket_pos, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, team1_score, team2_score, winning_team, status, court, created_at, completed_at";
+  "id, event_id, match_type, team1_id, team2_id, round, bracket_pos, group_no, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, team1_score, team2_score, winning_team, status, court, created_at, completed_at";
 
 export async function listMatches(eventId: string): Promise<OcMatch[]> {
   const { data, error } = await supabase
@@ -52,7 +53,8 @@ export async function createTeamMatch(
   team1: OcTeam | null,
   team2: OcTeam | null,
   round: number | null = null,
-  bracketPos: number | null = null
+  bracketPos: number | null = null,
+  groupNo: number | null = null
 ): Promise<OcMatch> {
   const { data, error } = await supabase
     .from("oc_matches")
@@ -61,6 +63,7 @@ export async function createTeamMatch(
       match_type: matchType,
       round,
       bracket_pos: bracketPos,
+      group_no: groupNo,
       ...teamPlayerCols(team1, 1),
       ...teamPlayerCols(team2, 2),
     })
@@ -179,18 +182,30 @@ export async function resetScore(matchId: string): Promise<void> {
   if (error) throw error;
 }
 
+function shuffled<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 /**
- * Single-elimination generation. Teams seeded by `seed` (creation order).
- * Bracket size = next power of two; top seeds receive the byes and are placed
- * directly into round 2. All rounds are created up front with TBD slots.
+ * Single-elimination generation. Bracket size = next power of two.
+ * FAIRNESS: when the team count isn't a power of two the unavoidable byes are
+ * assigned by RANDOM DRAW (not seed order) and labeled in the UI. For fully
+ * even play use the Groups format instead.
  */
 export async function generateSingleElim(
   eventId: string,
   matchType: EventType,
-  teams: OcTeam[],
+  teamsIn: OcTeam[],
   finalsBestOf = 1
 ): Promise<void> {
-  const n = teams.length;
+  const n = teamsIn.length;
+  // Random draw decides bracket placement (and therefore any byes)
+  const teams = n === 1 || (n & (n - 1)) === 0 ? teamsIn : shuffled(teamsIn);
   if (n < 2) throw new Error("Need at least 2 teams");
   let size = 1;
   while (size < n) size *= 2;
@@ -332,6 +347,102 @@ export async function generatePlayoffs(
     await createTeamMatch(eventId, matchType, top[1], top[2], base, 1);
     for (let g = 0; g < finalsBestOf; g++) {
       await createTeamMatch(eventId, matchType, null, null, base + 1, 0); // final series, TBD
+    }
+  }
+}
+
+const GROUP_LETTERS = "ABCDEFGH";
+
+/**
+ * FIFA-style groups: teams distributed round-robin by seed into `numGroups`
+ * groups (A, B, …), full round robin inside each group (circle method).
+ */
+export async function generateGroups(
+  eventId: string,
+  matchType: EventType,
+  teams: OcTeam[],
+  numGroups: number
+): Promise<void> {
+  if (teams.length < numGroups * 2) throw new Error(`Need at least ${numGroups * 2} teams for ${numGroups} groups`);
+  const buckets: OcTeam[][] = Array.from({ length: numGroups }, () => []);
+  const bySeed = [...teams].sort((a, b) => a.seed - b.seed);
+  bySeed.forEach((t, i) => buckets[i % numGroups].push(t));
+
+  for (let g = 0; g < numGroups; g++) {
+    for (const t of buckets[g]) {
+      await supabase.from("oc_teams").update({ group_no: g }).eq("id", t.id);
+    }
+    // circle-method RR inside the group
+    const arr: (OcTeam | null)[] = [...buckets[g]];
+    if (arr.length % 2 === 1) arr.push(null);
+    const size = arr.length;
+    for (let r = 0; r < size - 1; r++) {
+      for (let i = 0; i < size / 2; i++) {
+        const a = arr[i];
+        const b = arr[size - 1 - i];
+        if (a && b) await createTeamMatch(eventId, matchType, a, b, r + 1, null, g);
+      }
+      arr.splice(1, 0, arr.pop()!);
+    }
+  }
+}
+
+/**
+ * Knockout from group standings: top 2 per group, cross-paired
+ * (A1 vs B2, B1 vs C2, … circular), then TBD rounds down to a best-of final.
+ * numGroups of 2 or 4 keeps the bracket a power of two.
+ */
+export async function generateGroupKnockout(
+  eventId: string,
+  matchType: EventType,
+  teams: OcTeam[],
+  matches: OcMatch[],
+  finalsBestOf = 1
+): Promise<void> {
+  const groups = [...new Set(teams.map((t) => t.group_no).filter((g) => g !== null))] as number[];
+  groups.sort((a, b) => a - b);
+  if (groups.length < 2) throw new Error("No groups found");
+
+  const topTwo = new Map<number, string[]>();
+  for (const g of groups) {
+    const ids = new Set(teams.filter((t) => t.group_no === g).map((t) => t.id));
+    const standing = computeTeamStandings(matches.filter((m) => m.group_no === g)).filter((s) => ids.has(s.teamId));
+    if (standing.length < 2) throw new Error(`Group ${GROUP_LETTERS[g]} needs completed matches`);
+    topTwo.set(g, [standing[0].teamId, standing[1].teamId]);
+  }
+
+  const byId = new Map(teams.map((t) => [t.id, t]));
+  // Cross pairing: winner of group i vs runner-up of group i+1
+  const pairs: [OcTeam, OcTeam][] = groups.map((g, i) => {
+    const next = groups[(i + 1) % groups.length];
+    return [byId.get(topTwo.get(g)![0])!, byId.get(topTwo.get(next)![1])!];
+  });
+
+  const { data } = await supabase
+    .from("oc_matches")
+    .select("round")
+    .eq("event_id", eventId)
+    .not("round", "is", null)
+    .order("round", { ascending: false })
+    .limit(1);
+  const base = (data?.[0]?.round ?? 0) + 1;
+  const totalRounds = Math.ceil(Math.log2(pairs.length * 2));
+
+  for (let r = 0; r < totalRounds; r++) {
+    const count = pairs.length / Math.pow(2, r);
+    const isFinal = count === 1;
+    const games = isFinal ? finalsBestOf : 1;
+    for (let p = 0; p < count; p++) {
+      for (let ggame = 0; ggame < games; ggame++) {
+        await createTeamMatch(
+          eventId,
+          matchType,
+          r === 0 ? pairs[p][0] : null,
+          r === 0 ? pairs[p][1] : null,
+          base + r,
+          p
+        );
+      }
     }
   }
 }

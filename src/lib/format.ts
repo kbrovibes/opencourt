@@ -34,3 +34,8 @@ export function to24h(t: string): string {
   if (h > 23) return "";
   return `${String(h).padStart(2, "0")}:${min}`;
 }
+
+/** Display-only Title Case for player names ("anish kumar" → "Anish Kumar"). */
+export function titleCaseName(name: string): string {
+  return name.replace(/(^|\s)(\S)/g, (_, sp, ch) => sp + ch.toUpperCase());
+}

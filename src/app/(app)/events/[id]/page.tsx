@@ -4,7 +4,7 @@ import { checkinOpen, getEvent, getRoster } from "@/lib/db/events";
 import { listMatches, computeTeamStandings } from "@/lib/db/matches";
 import { listTeams } from "@/lib/db/teams";
 import { listPlayers } from "@/lib/db/players";
-import { formatDate, formatDateTime, formatStartTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatStartTime, titleCaseName } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import ShareLink from "@/components/ShareLink";
 import EventAdminControls from "@/components/EventAdminControls";
@@ -56,7 +56,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const isOpen = checkinOpen(event);
   const isFull = checkedIn.length >= event.max_players;
 
-  const nameById = new Map(allPlayers.map((p) => [p.id, p.name]));
+  const nameById = new Map(allPlayers.map((p) => [p.id, titleCaseName(p.name)]));
   const teamLabel = (t: { player1_id: string; player2_id: string | null }) =>
     [t.player1_id, t.player2_id]
       .filter(Boolean)
@@ -65,6 +65,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const teamOpts = teams.map((t) => ({
     id: t.id,
     seed: t.seed,
+    groupNo: t.group_no,
     label: teamLabel(t),
     shortNames: [t.player1_id, t.player2_id]
       .filter(Boolean)
@@ -161,37 +162,53 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       </h2>
       <div className="bg-surface rounded-xl border border-border-light dark:border-border divide-y divide-border-light dark:divide-border">
         {teamOpts.map((t) => (
-          <div key={t.id} className="flex items-center px-4 py-3.5">
+          <div key={t.id} className="flex items-center px-4 py-2.5">
             <span className="w-8 text-xs font-mono text-muted-light">#{t.seed}</span>
-            <span className="text-sm font-medium text-heading leading-snug">
-              {t.shortNames.map((n) => (
-                <span key={n} className="block">{n}</span>
-              ))}
-            </span>
+            <span className="flex-1 text-sm font-medium text-heading truncate">{t.label}</span>
+            {t.groupNo !== null && (
+              <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase">Grp {"ABCDEFGH"[t.groupNo]}</span>
+            )}
           </div>
         ))}
       </div>
     </section>
   );
 
+  const groupNos = [...new Set(teamOpts.map((t) => t.groupNo).filter((g) => g !== null))].sort() as number[];
+
+  const standingsTable = (rows: typeof standings) => (
+    <div className="bg-surface rounded-xl border border-border-light dark:border-border divide-y divide-border-light dark:divide-border">
+      {rows.map((s, i) => (
+        <div key={s.teamId} className="flex items-center px-4 py-2.5">
+          <span className="w-6 text-xs text-muted-light">{i + 1}</span>
+          <span className="flex-1 text-sm font-medium text-heading truncate">{labelByTeam.get(s.teamId) ?? "?"}</span>
+          <span className="text-sm font-semibold text-green-600 dark:text-green-400">{s.wins}W</span>
+          <span className="text-sm text-muted ml-2">{s.losses}L</span>
+          <span className="text-[11px] text-muted-light ml-3 font-mono">
+            {s.pointsFor - s.pointsAgainst >= 0 ? "+" : ""}{s.pointsFor - s.pointsAgainst}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
   const standingsSection = (
     <section className="flex flex-col gap-3">
       {standings.length === 0 ? (
         <p className="text-sm text-muted px-1">No completed matches yet.</p>
-      ) : (
-        <div className="bg-surface rounded-xl border border-border-light dark:border-border divide-y divide-border-light dark:divide-border">
-          {standings.map((s, i) => (
-            <div key={s.teamId} className="flex items-center px-4 py-2.5">
-              <span className="w-6 text-xs text-muted-light">{i + 1}</span>
-              <span className="flex-1 text-sm font-medium text-heading truncate">{labelByTeam.get(s.teamId) ?? "?"}</span>
-              <span className="text-sm font-semibold text-green-600 dark:text-green-400">{s.wins}W</span>
-              <span className="text-sm text-muted ml-2">{s.losses}L</span>
-              <span className="text-[11px] text-muted-light ml-3 font-mono">
-                {s.pointsFor - s.pointsAgainst >= 0 ? "+" : ""}{s.pointsFor - s.pointsAgainst}
-              </span>
+      ) : groupNos.length > 1 ? (
+        groupNos.map((g) => {
+          const ids = new Set(teamOpts.filter((t) => t.groupNo === g).map((t) => t.id));
+          const rows = computeTeamStandings(matches.filter((m) => m.group_no === g)).filter((s) => ids.has(s.teamId));
+          return (
+            <div key={g} className="flex flex-col gap-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1">Group {"ABCDEFGH"[g]}</p>
+              {standingsTable(rows)}
             </div>
-          ))}
-        </div>
+          );
+        })
+      ) : (
+        <>{standingsTable(standings)}</>
       )}
     </section>
   );
@@ -211,7 +228,20 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
       <BracketView matches={matches} teams={teamOpts} />
-      <ResultsMatrix matches={matches} teams={teamOpts} canScore={player.isAdmin && event.stage === "started" && !isCompleted} />
+      {groupNos.length > 1 ? (
+        groupNos.map((g) => (
+          <div key={g} className="flex flex-col gap-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1">Group {"ABCDEFGH"[g]}</p>
+            <ResultsMatrix
+              matches={matches.filter((m) => m.group_no === g)}
+              teams={teamOpts.filter((t) => t.groupNo === g)}
+              canScore={player.isAdmin && event.stage === "started" && !isCompleted}
+            />
+          </div>
+        ))
+      ) : (
+        <ResultsMatrix matches={matches} teams={teamOpts} canScore={player.isAdmin && event.stage === "started" && !isCompleted} />
+      )}
     </div>
   );
 
@@ -295,7 +325,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         {event.notes && <p className="text-[13px] text-text whitespace-pre-wrap">{event.notes}</p>}
       </div>
 
-      {player.isAdmin && <EventAdminControls event={event} canUnstart={event.stage === "started" && !matches.some((m) => m.status === "completed")} />}
+      {player.isAdmin && <EventAdminControls event={event} canUnstart={event.stage === "started" && !matches.some((m) => m.status === "completed")} canStart={event.stage === "matches_set"} />}
       {copySource && (
         <CopyCheckins eventId={event.id} sourceName={copySource.name} players={copySource.players} />
       )}

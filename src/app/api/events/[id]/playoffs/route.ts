@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { getEvent } from "@/lib/db/events";
 import { listTeams } from "@/lib/db/teams";
-import { computeTeamStandings, generatePlayoffs, listMatches } from "@/lib/db/matches";
+import { computeTeamStandings, generateGroupKnockout, generatePlayoffs, listMatches } from "@/lib/db/matches";
 
 /** Append knockout playoffs (top 2 or top 4 by standings) to a running group-format event. */
 export async function POST(
@@ -38,8 +38,12 @@ export async function POST(
         { status: 400 }
       );
     }
-    const standings = computeTeamStandings(matches);
-    await generatePlayoffs(id, event.event_type, teams, standings.map((s) => s.teamId), size, finalsBestOf);
+    if (event.match_format === "groups") {
+      await generateGroupKnockout(id, event.event_type, teams, matches, finalsBestOf);
+    } else {
+      const standings = computeTeamStandings(matches);
+      await generatePlayoffs(id, event.event_type, teams, standings.map((s) => s.teamId), size, finalsBestOf);
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

@@ -2,6 +2,20 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.10.0] — 2026-08-04
+
+### Added
+- 🌍 Groups + knockout format (FIFA style): choose 2 or 4 groups, round robin within each, then one tap generates the cross-group knockout (A1 vs B2 …) with best-of finals. Group-wise standings and score grids.
+
+### Fixed
+- Knockout fairness: byes for non-power-of-2 team counts are now a random draw (never seed order), clearly labeled, with an upfront warning suggesting Groups for even play. That's what put a team "already in the semis" in your 6-team knockout.
+- Tab jump while scoring: the active event tab is now remembered (per event) and restored after every refresh — entering scores can no longer dump you back on Overview.
+
+### Changed
+- Start button now sits beside Complete; Change Format / Edit Teams stay with Draft-level actions.
+- Team editing is fully lazy: ✕ marks a team for removal (↺ to undo), one Save applies adds and removals together.
+- Teams list in the Players tab is back to one line per team; player names are Title Case everywhere they're displayed.
+
 ## [0.9.1] — 2026-08-04
 
 ### Changed

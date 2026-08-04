@@ -8,7 +8,7 @@ import type { OcEvent, EventStatus } from "@/lib/db/events";
 
 type PendingAction = "draft" | "cancel" | null;
 
-export default function EventAdminControls({ event, canUnstart }: { event: OcEvent; canUnstart: boolean }) {
+export default function EventAdminControls({ event, canUnstart, canStart }: { event: OcEvent; canUnstart: boolean; canStart: boolean }) {
   const router = useRouter();
   const { startLoading } = useNavigationLoader();
   const [busy, setBusy] = useState(false);
@@ -67,6 +67,22 @@ export default function EventAdminControls({ event, canUnstart }: { event: OcEve
     router.refresh();
   }
 
+  async function setStage(stage: string) {
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/events/${event.id}/stage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Failed");
+    }
+    setBusy(false);
+    router.refresh();
+  }
+
   async function unstart() {
     setBusy(true);
     setError(null);
@@ -102,6 +118,9 @@ export default function EventAdminControls({ event, canUnstart }: { event: OcEve
           btn("🚀 Go Live", () => setStatus("live"), "bg-green-600 text-white hover:bg-green-500")}
         {event.status === "live" && [
           btn("✅ Complete", () => setStatus("completed"), "bg-stone-900 dark:bg-sky-600 text-white hover:bg-stone-800 dark:hover:bg-sky-500", "complete"),
+          ...(canStart
+            ? [btn("🚀 Start", () => setStage("started"), "bg-green-600 text-white hover:bg-green-500", "start")]
+            : []),
           btn("↩︎ Draft", () => setPending("draft"), "bg-surface-alt text-text hover:bg-border-light dark:hover:bg-border", "todraft"),
         ]}
         {(event.status === "completed" || event.status === "cancelled") &&

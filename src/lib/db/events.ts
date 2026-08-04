@@ -1,9 +1,10 @@
 import { supabase } from "@/lib/supabase";
+import { titleCaseName } from "@/lib/format";
 
 export type EventStatus = "draft" | "live" | "completed" | "cancelled";
 export type EventType = "singles" | "doubles";
 export type EventStage = "roster" | "team_formation" | "teams_locked" | "matches_set" | "started";
-export type MatchFormat = "manual" | "single_elim" | "round_robin" | "fixed_rounds";
+export type MatchFormat = "manual" | "single_elim" | "round_robin" | "fixed_rounds" | "groups";
 
 export interface OcEvent {
   id: string;
@@ -175,7 +176,7 @@ export async function getRoster(event: OcEvent): Promise<RosterEntry[]> {
     return {
       id: row.id,
       player_id: row.player_id,
-      name: name ?? "?",
+      name: titleCaseName(name ?? "?"),
       registered_at: row.registered_at,
       checked_in_at: row.checked_in_at,
       partner_id: row.partner_id,

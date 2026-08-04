@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { getEvent, updateEvent, type MatchFormat } from "@/lib/db/events";
 import { listTeams } from "@/lib/db/teams";
-import { clearMatches, generateFixedRounds, generateRoundRobin, generateSingleElim } from "@/lib/db/matches";
+import { clearMatches, generateFixedRounds, generateGroups, generateRoundRobin, generateSingleElim } from "@/lib/db/matches";
 
 export async function POST(
   request: NextRequest,
@@ -20,11 +20,12 @@ export async function POST(
 
   const body = await request.json().catch(() => ({}));
   const format = body.format as MatchFormat;
-  if (!["manual", "single_elim", "round_robin", "fixed_rounds"].includes(format)) {
+  if (!["manual", "single_elim", "round_robin", "fixed_rounds", "groups"].includes(format)) {
     return NextResponse.json({ error: "Invalid format" }, { status: 400 });
   }
   const roundsPerTeam = parseInt(body.rounds_per_team, 10);
   const finalsBestOf = [1, 3, 5].includes(parseInt(body.finals_best_of, 10)) ? parseInt(body.finals_best_of, 10) : 1;
+  const numGroups = [2, 4].includes(parseInt(body.num_groups, 10)) ? parseInt(body.num_groups, 10) : 2;
   if (format === "fixed_rounds" && (!Number.isFinite(roundsPerTeam) || roundsPerTeam < 1 || roundsPerTeam > 20)) {
     return NextResponse.json({ error: "Matches per team must be between 1 and 20" }, { status: 400 });
   }
@@ -38,6 +39,8 @@ export async function POST(
       await generateRoundRobin(id, event.event_type, teams);
     } else if (format === "fixed_rounds") {
       await generateFixedRounds(id, event.event_type, teams, roundsPerTeam);
+    } else if (format === "groups") {
+      await generateGroups(id, event.event_type, teams, numGroups);
     }
     // manual: no matches generated — admin creates team-vs-team matches by hand
     await updateEvent(id, { stage: "matches_set", match_format: format });

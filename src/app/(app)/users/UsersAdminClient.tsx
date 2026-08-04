@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import SkillDots from "@/components/SkillDots";
+import { titleCaseName } from "@/lib/format";
 
 interface EventOpt {
   id: string;
@@ -289,7 +290,7 @@ export default function UsersAdminClient({ openEvents, selectedEventId, players,
               <div className="flex items-center justify-between gap-2 px-4 py-2.5">
                 <div className="flex flex-col min-w-0">
                   <span className={`text-sm font-medium truncate flex items-center gap-1.5 ${p.disabled ? "text-muted-light line-through" : "text-heading"}`}>
-                    {p.name}
+                    {titleCaseName(p.name)}
                     <SkillDots level={p.skill} />
                     {p.isAdmin && (
                       <span className="text-[9px] font-bold tracking-wider uppercase text-red-500/80 dark:text-red-400/80 no-underline">admin</span>

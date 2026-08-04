@@ -8,6 +8,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import SkillDots from "@/components/SkillDots";
 import NavLink from "@/components/NavLink";
 import type { PlayerStats } from "@/lib/db/stats";
+import { titleCaseName } from "@/lib/format";
 
 interface Props {
   name: string;
@@ -106,7 +107,7 @@ export default function ProfileClient({ name, email, isAdmin, version, skill, st
         ) : (
           <div className="flex flex-col items-center gap-0.5">
             <button onClick={() => setEditing(true)} className="text-lg font-bold text-heading" title="Tap to edit name">
-              {name} <span className="text-xs text-muted-light font-normal">✏️</span>
+              {titleCaseName(name)} <span className="text-xs text-muted-light font-normal">✏️</span>
             </button>
             <span className="text-xs text-muted">{email}</span>
             {isAdmin && (

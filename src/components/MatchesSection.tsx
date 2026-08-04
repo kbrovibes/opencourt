@@ -119,7 +119,8 @@ export default function MatchesSection({ eventId, stage, eventCompleted, matchFo
       if (remaining === 2) return "Quarterfinals";
       return `Knockout · Round ${m.round - minKR + 1}`;
     }
-    return `Round ${m.round}`;
+    const grp = m.group_no !== null ? `Group ${"ABCDEFGH"[m.group_no]} · ` : "";
+    return `${grp}Round ${m.round}`;
   }
 
   // Bye teams: seeded straight into a later knockout round without an earlier match
@@ -161,7 +162,7 @@ export default function MatchesSection({ eventId, stage, eventCompleted, matchFo
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between px-1">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-light">
-          Matches ({matches.length}){matchFormat && matchFormat !== "manual" ? ` · ${{ single_elim: "knockout", round_robin: "round robin", fixed_rounds: "group rounds" }[matchFormat]}` : ""}
+          Matches ({matches.length}){matchFormat && matchFormat !== "manual" ? ` · ${{ single_elim: "knockout", round_robin: "round robin", fixed_rounds: "group rounds", groups: "groups + knockout" }[matchFormat]}` : ""}
         </h2>
         {canManage && teams.length >= 2 && (
           <button onClick={() => setShowForm((v) => !v)} className="text-xs font-semibold text-sky-600 dark:text-sky-400">

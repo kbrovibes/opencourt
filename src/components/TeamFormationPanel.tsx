@@ -26,14 +26,17 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<string[][]>([]); // local, unsaved lineups
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set()); // marked, not yet applied
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const teamSize = eventType === "doubles" ? 2 : 1;
   const nameOf = new Map(checkedIn.map((p) => [p.id, p.name]));
-  const inSaved = new Set(teams.flatMap((t) => t.playerIds));
+  const keptTeams = teams.filter((t) => !pendingDeletes.has(t.id));
+  const inSaved = new Set(keptTeams.flatMap((t) => t.playerIds));
   const inPending = new Set(pending.flat());
   const free = checkedIn.filter((p) => !inSaved.has(p.id) && !inPending.has(p.id));
+  const dirty = pending.length > 0 || pendingDeletes.size > 0;
 
   async function api(body: Record<string, unknown>) {
     setBusy(true);
@@ -71,9 +74,25 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
   }
 
   async function saveAll() {
-    if (pending.length === 0) return;
-    const ok = await api({ action: "create_bulk", teams: pending });
-    if (ok) setPending([]);
+    if (!dirty) return;
+    // deletions first so freed players can be reused by new lineups
+    for (const id of pendingDeletes) {
+      const ok = await api({ action: "delete", team_id: id });
+      if (!ok) return;
+    }
+    if (pending.length > 0) {
+      const ok = await api({ action: "create_bulk", teams: pending });
+      if (!ok) return;
+    }
+    setPending([]);
+    setPendingDeletes(new Set());
+  }
+
+  function toggleDelete(teamId: string) {
+    const next = new Set(pendingDeletes);
+    if (next.has(teamId)) next.delete(teamId);
+    else next.add(teamId);
+    setPendingDeletes(next);
   }
 
   return (
@@ -131,13 +150,6 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
               </button>
             </div>
           ))}
-          <button
-            onClick={saveAll}
-            disabled={busy}
-            className="mt-1 w-full py-2.5 bg-stone-900 dark:bg-sky-600 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-          >
-            {busy ? "Saving…" : `💾 Save ${pending.length} team${pending.length > 1 ? "s" : ""}`}
-          </button>
         </div>
       )}
 
@@ -150,19 +162,25 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
           {teams.map((t) => (
             <div
               key={t.id}
-              className="flex items-center justify-between px-3 py-2 bg-surface-alt rounded-lg"
+              className={`flex items-center justify-between px-3 py-2 rounded-lg ${
+                pendingDeletes.has(t.id)
+                  ? "bg-red-50 dark:bg-red-500/10 opacity-70"
+                  : "bg-surface-alt"
+              }`}
             >
-              <span className="text-sm font-medium text-heading">
+              <span className={`text-sm font-medium text-heading ${pendingDeletes.has(t.id) ? "line-through" : ""}`}>
                 <span className="text-muted-light font-mono text-xs mr-2">#{t.seed}</span>
                 {t.label}
               </span>
               <button
-                onClick={() => api({ action: "delete", team_id: t.id })}
+                onClick={() => toggleDelete(t.id)}
                 disabled={busy}
-                className="text-red-500 dark:text-red-400 text-sm font-bold px-1.5 disabled:opacity-50"
-                title="Dissolve team"
+                className={`text-sm font-bold px-1.5 disabled:opacity-50 ${
+                  pendingDeletes.has(t.id) ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
+                }`}
+                title={pendingDeletes.has(t.id) ? "Undo removal" : "Mark for removal"}
               >
-                ✕
+                {pendingDeletes.has(t.id) ? "↺" : "✕"}
               </button>
             </div>
           ))}
@@ -192,17 +210,28 @@ export default function TeamFormationPanel({ eventId, eventType, checkedIn, team
         )}
         {teams.length > 0 && (
           <button
-            onClick={() => api({ action: "clear" })}
+            onClick={() => setPendingDeletes(new Set(teams.map((t) => t.id)))}
             disabled={busy}
             className="px-3 py-2 text-red-500 dark:text-red-400 rounded-lg text-xs font-semibold hover:bg-surface-alt disabled:opacity-50"
           >
-            Clear saved
+            Mark all for removal
           </button>
         )}
       </div>
-      {pending.length > 0 && (
+      {dirty && (
+        <button
+          onClick={saveAll}
+          disabled={busy}
+          className="w-full py-2.5 bg-stone-900 dark:bg-sky-600 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+        >
+          {busy
+            ? "Saving…"
+            : `💾 Save changes${pending.length ? ` · +${pending.length}` : ""}${pendingDeletes.size ? ` · −${pendingDeletes.size}` : ""}`}
+        </button>
+      )}
+      {dirty && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400">
-          ⚠️ Save your lineups before finalizing — only saved teams count.
+          ⚠️ Unsaved changes — hit Save before finalizing.
         </p>
       )}
     </div>
