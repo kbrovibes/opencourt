@@ -2,6 +2,11 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.12.1] — 2026-08-04
+
+### Changed
+- Calendar cleanup: no today-ring, no dots — days with events are simply bold blue; selected day stays filled.
+
 ## [0.12.0] — 2026-08-04
 
 ### Added

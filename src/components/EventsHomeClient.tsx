@@ -93,25 +93,19 @@ export default function EventsHomeClient({ events, counts, isAdmin, todayISO }: 
             const dateISO = iso(y, m, day);
             const hasEvents = eventDates.has(dateISO);
             const isSelected = selectedDate === dateISO;
-            const isToday = dateISO === todayISO;
             return (
               <button
                 key={day}
                 onClick={() => hasEvents && setSelectedDate(isSelected ? null : dateISO)}
-                className={`relative mx-auto w-8 h-8 rounded-full text-xs flex flex-col items-center justify-center transition-colors ${
+                className={`mx-auto w-8 h-8 rounded-full text-xs flex items-center justify-center transition-colors ${
                   isSelected
                     ? "bg-sky-600 text-white font-bold"
-                    : isToday
-                      ? "ring-1 ring-sky-500 text-heading font-semibold"
-                      : hasEvents
-                        ? "text-heading font-semibold hover:bg-surface-alt cursor-pointer"
-                        : "text-muted-lighter cursor-default"
+                    : hasEvents
+                      ? "text-sky-600 dark:text-sky-400 font-bold hover:bg-surface-alt cursor-pointer"
+                      : "text-muted-lighter cursor-default"
                 }`}
               >
                 {day}
-                {hasEvents && !isSelected && (
-                  <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-sky-500" />
-                )}
               </button>
             );
           })}
