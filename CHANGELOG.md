@@ -2,6 +2,11 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.11.1] — 2026-08-04
+
+### Changed
+- Event cards and the event detail header now show the tournament format.
+
 ## [0.11.0] — 2026-08-04
 
 ### Added

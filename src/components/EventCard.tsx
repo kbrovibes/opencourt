@@ -1,6 +1,7 @@
 import NavLink from "@/components/NavLink";
 import StatusBadge from "@/components/StatusBadge";
 import { formatDate, formatStartTime } from "@/lib/format";
+import { FORMAT_LABEL } from "@/lib/formats";
 import type { OcEvent } from "@/lib/db/events";
 
 export default function EventCard({ event, count }: { event: OcEvent; count: number }) {
@@ -17,6 +18,7 @@ export default function EventCard({ event, count }: { event: OcEvent; count: num
         <span>🗓️ {formatDate(event.event_date)}{event.start_time ? ` · ${formatStartTime(event.start_time)}` : ""}</span>
         <span className="capitalize">{event.event_type === "doubles" ? "🤝 Doubles" : "🏸 Singles"}</span>
         <span>👥 {count}/{event.max_players}</span>
+        {event.match_format && <span>🏁 {FORMAT_LABEL[event.match_format]}</span>}
       </div>
       {event.location && (
         <div className="mt-1 text-xs text-muted-light truncate">📍 {event.location}</div>

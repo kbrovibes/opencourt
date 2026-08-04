@@ -5,6 +5,7 @@ import { listMatches, computeTeamStandings } from "@/lib/db/matches";
 import { listTeams } from "@/lib/db/teams";
 import { listPlayers } from "@/lib/db/players";
 import { formatDate, formatDateTime, formatStartTime, titleCaseName } from "@/lib/format";
+import { FORMAT_LABEL } from "@/lib/formats";
 import StatusBadge from "@/components/StatusBadge";
 import ShareLink from "@/components/ShareLink";
 import EventAdminControls from "@/components/EventAdminControls";
@@ -351,6 +352,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <span>🗓️ {formatDate(event.event_date)}{event.start_time ? ` · ${formatStartTime(event.start_time)}` : ""}</span>
           <span>{event.event_type === "doubles" ? "🤝 Doubles" : "🏸 Singles"}</span>
           <span>👥 {roster.length}/{event.max_players} registered</span>
+          {event.match_format && <span>🏁 {FORMAT_LABEL[event.match_format]}</span>}
           {event.location && <span>📍 {event.location}</span>}
           <ShareLink code={event.short_code} />
         </div>
