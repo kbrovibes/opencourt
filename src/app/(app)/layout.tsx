@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase-server";
 import { supabase as serviceClient } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 import { getAuthPlayer } from "@/lib/auth";
-import { getMyCheckedInLiveEventId } from "@/lib/db/events";
+import { getMyCheckedInLiveEventId, getMyLiveEvents, todayIST } from "@/lib/db/events";
 import { titleCaseName } from "@/lib/format";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
@@ -61,9 +61,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
-  // "Today" shortcut: my checked-in live event, else events home
-  const todayEventId = await getMyCheckedInLiveEventId(player.id);
-  const todayHref = todayEventId ? `/events/${todayEventId}` : "/";
+  // "Today" shortcut: one of today's events → straight there; several → /today list
+  const myLive = await getMyLiveEvents(player.id);
+  const todays = myLive.filter((e) => e.event_date === todayIST());
+  let todayHref = "/";
+  if (todays.length >= 2) {
+    todayHref = "/today";
+  } else if (todays.length === 1) {
+    todayHref = `/events/${todays[0].id}`;
+  } else {
+    const fallback = await getMyCheckedInLiveEventId(player.id);
+    if (fallback) todayHref = `/events/${fallback}`;
+  }
 
   return (
     <NavigationLoader>

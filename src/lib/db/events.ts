@@ -257,6 +257,23 @@ export async function setPartner(eventId: string, playerId: string, partnerId: s
   if (error) throw error;
 }
 
+/** Live events this player is actively part of (registered or checked in). */
+export async function getMyLiveEvents(playerId: string): Promise<OcEvent[]> {
+  const { data } = await supabase
+    .from("oc_event_players")
+    .select(`checked_in_at, oc_events!inner(${EVENT_COLS})`)
+    .eq("player_id", playerId)
+    .is("withdrawn_at", null)
+    .eq("oc_events.status", "live")
+    .is("oc_events.deleted_at", null);
+  return ((data ?? []) as unknown as { oc_events: OcEvent }[]).map((r) => r.oc_events);
+}
+
+/** Today's date in the club timezone (IST). */
+export function todayIST(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
 /**
  * The live event this player is currently checked into, preferring today's date.
  * Powers the "Today" bottom-nav shortcut.

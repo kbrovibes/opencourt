@@ -2,6 +2,11 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.10.1] — 2026-08-04
+
+### Changed
+- Today tab: with several of your events on the same day it now opens a "Your events today" list; a single event still opens directly.
+
 ## [0.10.0] — 2026-08-04
 
 ### Added
