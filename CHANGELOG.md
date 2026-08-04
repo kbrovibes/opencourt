@@ -2,6 +2,11 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.11.2] — 2026-08-04
+
+### Changed
+- Event cards use a neatly aligned two-column layout (venue shows just its first part); version tag sits beside BADMINTON in the header.
+
 ## [0.11.1] — 2026-08-04
 
 ### Changed
