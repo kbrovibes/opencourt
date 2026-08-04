@@ -1,7 +1,7 @@
 import { getAuthPlayer } from "@/lib/auth";
 import { listEvents, type OcEvent } from "@/lib/db/events";
 import { supabase } from "@/lib/supabase";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatStartTime } from "@/lib/format";
 import NavLink from "@/components/NavLink";
 import StatusBadge from "@/components/StatusBadge";
 
@@ -18,7 +18,7 @@ function EventCard({ event, count }: { event: OcEvent; count: number }) {
         <StatusBadge status={event.status} />
       </div>
       <div className="flex items-center gap-3 mt-1.5 text-xs text-muted">
-        <span>🗓️ {formatDate(event.event_date)}{event.start_time ? ` · ${event.start_time}` : ""}</span>
+        <span>🗓️ {formatDate(event.event_date)}{event.start_time ? ` · ${formatStartTime(event.start_time)}` : ""}</span>
         <span className="capitalize">{event.event_type === "doubles" ? "🤝 Doubles" : "🏸 Singles"}</span>
         <span>👥 {count}/{event.max_players}</span>
       </div>

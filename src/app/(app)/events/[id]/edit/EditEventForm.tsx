@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigationLoader } from "@/components/NavigationLoader";
+import LocationPicker from "@/components/LocationPicker";
+import { to24h } from "@/lib/format";
 import type { OcEvent } from "@/lib/db/events";
 
 const inputCls =
-  "w-full px-3.5 py-2.5 bg-surface border border-stone-300 dark:border-border rounded-lg text-sm text-text placeholder:text-muted-light focus:outline-none focus:ring-2 focus:ring-sky-500";
+  "w-full h-11 px-3.5 bg-surface border border-stone-300 dark:border-border rounded-lg text-sm text-text placeholder:text-muted-light focus:outline-none focus:ring-2 focus:ring-sky-500";
 const labelCls = "text-xs font-semibold uppercase tracking-wide text-muted-light";
 
 function toLocalDatetime(iso: string | null): string {
@@ -16,12 +18,12 @@ function toLocalDatetime(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export default function EditEventForm({ event }: { event: OcEvent }) {
+export default function EditEventForm({ event, quickPicks }: { event: OcEvent; quickPicks: string[] }) {
   const router = useRouter();
   const { startLoading } = useNavigationLoader();
   const [name, setName] = useState(event.name);
   const [date, setDate] = useState(event.event_date);
-  const [startTime, setStartTime] = useState(event.start_time ?? "");
+  const [startTime, setStartTime] = useState(to24h(event.start_time ?? ""));
   const [eventType, setEventType] = useState(event.event_type);
   const [maxPlayers, setMaxPlayers] = useState(String(event.max_players));
   const [checkinOpensAt, setCheckinOpensAt] = useState(toLocalDatetime(event.checkin_opens_at));
@@ -75,13 +77,13 @@ export default function EditEventForm({ event }: { event: OcEvent }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label className={labelCls}>Start time</label>
-          <input className={inputCls} value={startTime} onChange={(e) => setStartTime(e.target.value)} placeholder="6:00 PM" />
+          <input type="time" className={inputCls} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>Format {typeLocked && <span className="normal-case text-muted-lighter">(locked after team formation)</span>}</label>
-        <div className={`flex bg-surface-alt rounded-lg p-0.5 ${typeLocked ? "opacity-50 pointer-events-none" : ""}`}>
+        <div className={`flex h-11 items-stretch bg-surface-alt rounded-lg p-0.5 ${typeLocked ? "opacity-50 pointer-events-none" : ""}`}>
           {(["doubles", "singles"] as const).map((t) => (
             <button
               key={t}
@@ -109,12 +111,12 @@ export default function EditEventForm({ event }: { event: OcEvent }) {
 
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>Location (optional)</label>
-        <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} />
+        <LocationPicker value={location} onChange={setLocation} quickPicks={quickPicks} inputClassName={inputCls} />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>Notes (optional)</label>
-        <textarea className={`${inputCls} min-h-20`} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <textarea className={`${inputCls.replace("h-11 ", "")} py-2.5 min-h-20`} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
       {error && (

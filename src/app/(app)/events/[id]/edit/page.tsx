@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getAuthPlayer } from "@/lib/auth";
-import { getEvent } from "@/lib/db/events";
+import { getEvent, getRecentLocations } from "@/lib/db/events";
 import BackButton from "@/components/BackButton";
 import EditEventForm from "./EditEventForm";
 
@@ -13,12 +13,13 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
 
   const event = await getEvent(id);
   if (!event) notFound();
+  const quickPicks = await getRecentLocations();
 
   return (
     <div className="max-w-md mx-auto px-4 py-5 flex flex-col gap-4">
       <BackButton href={`/events/${id}`} label="Back to event" />
       <h1 className="text-xl font-bold text-heading">Edit Event</h1>
-      <EditEventForm event={event} />
+      <EditEventForm event={event} quickPicks={quickPicks} />
     </div>
   );
 }

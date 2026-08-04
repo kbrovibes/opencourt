@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigationLoader } from "@/components/NavigationLoader";
+import LocationPicker from "@/components/LocationPicker";
 
 const inputCls =
-  "w-full px-3.5 py-2.5 bg-surface border border-stone-300 dark:border-border rounded-lg text-sm text-text placeholder:text-muted-light focus:outline-none focus:ring-2 focus:ring-sky-500";
+  "w-full h-11 px-3.5 bg-surface border border-stone-300 dark:border-border rounded-lg text-sm text-text placeholder:text-muted-light focus:outline-none focus:ring-2 focus:ring-sky-500";
 const labelCls = "text-xs font-semibold uppercase tracking-wide text-muted-light";
 
-export default function CreateEventForm() {
+export default function CreateEventForm({ quickPicks }: { quickPicks: string[] }) {
   const router = useRouter();
   const { startLoading } = useNavigationLoader();
   const [name, setName] = useState("");
@@ -66,13 +67,13 @@ export default function CreateEventForm() {
         </div>
         <div className="flex flex-col gap-1.5">
           <label className={labelCls}>Start time</label>
-          <input className={inputCls} value={startTime} onChange={(e) => setStartTime(e.target.value)} placeholder="6:00 PM" />
+          <input type="time" className={inputCls} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>Format</label>
-        <div className="flex bg-surface-alt rounded-lg p-0.5">
+        <div className="flex h-11 items-stretch bg-surface-alt rounded-lg p-0.5">
           {(["doubles", "singles"] as const).map((t) => (
             <button
               key={t}
@@ -95,7 +96,7 @@ export default function CreateEventForm() {
         </div>
         <div className="flex flex-col gap-1.5">
           <label className={labelCls}>Visibility</label>
-          <div className="flex bg-surface-alt rounded-lg p-0.5">
+          <div className="flex h-11 items-stretch bg-surface-alt rounded-lg p-0.5">
             {(["live", "draft"] as const).map((s) => (
               <button
                 key={s}
@@ -120,12 +121,12 @@ export default function CreateEventForm() {
 
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>Location (optional)</label>
-        <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Community Center, Court 1–2" />
+        <LocationPicker value={location} onChange={setLocation} quickPicks={quickPicks} inputClassName={inputCls} />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>Notes (optional)</label>
-        <textarea className={`${inputCls} min-h-20`} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Bring your own shuttles…" />
+        <textarea className={`${inputCls.replace("h-11 ", "")} py-2.5 min-h-20`} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Bring your own shuttles…" />
       </div>
 
       {error && (

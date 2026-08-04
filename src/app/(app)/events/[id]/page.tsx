@@ -4,7 +4,7 @@ import { checkinOpen, getEvent, getRoster } from "@/lib/db/events";
 import { listMatches, computeTeamStandings } from "@/lib/db/matches";
 import { listTeams } from "@/lib/db/teams";
 import { listPlayers } from "@/lib/db/players";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatStartTime } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import ShareLink from "@/components/ShareLink";
 import EventAdminControls from "@/components/EventAdminControls";
@@ -281,7 +281,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
-          <span>🗓️ {formatDate(event.event_date)}{event.start_time ? ` · ${event.start_time}` : ""}</span>
+          <span>🗓️ {formatDate(event.event_date)}{event.start_time ? ` · ${formatStartTime(event.start_time)}` : ""}</span>
           <span>{event.event_type === "doubles" ? "🤝 Doubles" : "🏸 Singles"}</span>
           <span>👥 {roster.length}/{event.max_players} registered</span>
           {event.location && <span>📍 {event.location}</span>}

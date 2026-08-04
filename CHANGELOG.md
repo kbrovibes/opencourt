@@ -2,6 +2,12 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.9.1] — 2026-08-04
+
+### Changed
+- Event create/edit: start time is a proper time picker (12-hour display everywhere; old freeform values still render); date/time/segmented controls share one height — no more misaligned boxes.
+- Location field: address autocomplete (OpenStreetMap/Photon, biased to south India) plus quick-pick badges of recently used venues from past events.
+
 ## [0.9.0] — 2026-08-04
 
 ### Added

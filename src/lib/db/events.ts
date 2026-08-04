@@ -128,6 +128,28 @@ export async function updateEvent(
   if (error) throw error;
 }
 
+/** Most recently used distinct venue strings (for quick-pick badges). */
+export async function getRecentLocations(limit = 3): Promise<string[]> {
+  const { data } = await supabase
+    .from("oc_events")
+    .select("location, created_at")
+    .not("location", "is", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(30);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const row of data ?? []) {
+    const loc = (row.location ?? "").trim();
+    if (loc && !seen.has(loc)) {
+      seen.add(loc);
+      out.push(loc);
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
 /** Soft delete: hides the event everywhere; recoverable by clearing deleted_at in the DB. */
 export async function softDeleteEvent(id: string): Promise<void> {
   const { error } = await supabase
