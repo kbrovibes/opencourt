@@ -40,3 +40,6 @@ BOOTSTRAP.md
 
 # claude
 .claude/worktrees/
+
+# local tooling state
+.claude-flow/
