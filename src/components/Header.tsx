@@ -55,9 +55,6 @@ export default function Header({ userName, isAdmin, appVersion }: HeaderProps) {
         <span className="font-bold text-heading text-2xl tracking-tight">OpenCourt</span>
         <span className="font-black text-heading text-[13px] tracking-[0.25em] uppercase -mt-0.5">
           Badminton
-          {isAdmin && (
-            <span className="ml-1.5 align-middle text-[9px] font-mono font-normal normal-case tracking-normal text-muted-light">v{appVersion}</span>
-          )}
         </span>
       </NavLink>
 
@@ -103,6 +100,11 @@ export default function Header({ userName, isAdmin, appVersion }: HeaderProps) {
               <span className="text-base">🚪</span>
               Logout
             </button>
+            {isAdmin && (
+              <div className="px-4 py-1.5 text-[10px] font-mono text-muted-light border-t border-border-light dark:border-border select-none">
+                v{appVersion}
+              </div>
+            )}
           </div>
         )}
       </div>

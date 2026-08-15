@@ -2,6 +2,12 @@
 
 All notable user-facing changes to OpenCourt.
 
+## [0.12.2] — 2026-08-15
+
+### Changed
+- Header logo (OpenCourt / Badminton) is cleanly centered again: the version tag no longer sits beside "Badminton".
+- App version now lives in the avatar dropdown menu as a small footer line, visible to admins only.
+
 ## [0.12.1] — 2026-08-04
 
 ### Changed
