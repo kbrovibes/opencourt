@@ -4,7 +4,8 @@
 
 Create an event, drop the link in your WhatsApp group, watch people register and check in, tap players into teams, pick a format, and run the whole tournament — bracket, scores, standings, champions — from a phone at courtside.
 
-**Live app:** https://opencourt-badminton.vercel.app
+**Live app:** https://opencourt-badminton.vercel.app  
+**Landing page:** https://kbrovibes.github.io/opencourt/
 
 ---
 

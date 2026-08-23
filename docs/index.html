@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<title>Open Court — club badminton tournaments, run from a phone</title>
+<meta name="description" content="Create a badminton event, drop the short link in the group chat, tap players into teams, pick a format, and score the whole bracket from courtside.">
+<meta name="author" content="Karthik Rajan">
+<meta name="color-scheme" content="light">
+
+<link rel="canonical" href="https://kbrovibes.github.io/opencourt/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kbrovibes.github.io/opencourt/">
+<meta property="og:title" content="Open Court — club badminton tournaments, run from a phone">
+<meta property="og:description" content="Create an event, share a short link, tap players into teams, and run the bracket from courtside. Players persist between tournaments.">
+<meta property="og:image" content="https://kbrovibes.github.io/opencourt/media/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%B8%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ==========================================================================
+   THEME TOKENS — derived from src/app/globals.css (:root, light palette)
+   and src/app/layout.tsx (Plus Jakarta Sans + Geist Mono).
+   ========================================================================== */
+:root{
+  --bg:            #fafaf9;   /* stone-50, --background */
+  --surface:       #ffffff;   /* --surface */
+  --surface-2:     #f5f5f4;   /* stone-100, --surface-alt */
+  --ink:           #1c1917;   /* stone-900, --heading */
+  --muted:         #57534e;   /* stone-600 (stone-500 #78716c fails 4.5:1) */
+  --accent:        #0369a1;   /* sky-700 — sky-500/600 fail 4.5:1 as text on stone-50 */
+  --accent-ink:    #ffffff;
+  --accent-2:      #15803d;   /* green-700, the "win" colour */
+  --hairline:      #e7e5e4;   /* stone-200, --border */
+  --radius:        10px;      /* rounded-lg dominates the app */
+  --shadow:        0 1px 2px rgba(28,25,23,.05), 0 12px 28px -14px rgba(28,25,23,.14);
+  --font-display:  "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-body:     "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:     "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme:    light;
+}
+/* ==================== end theme tokens =================================== */
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+img,svg{display:block;max-width:100%}
+a{color:inherit}
+h1,h2,h3{margin:0;line-height:1.1;letter-spacing:-.03em;font-weight:800}
+p{margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+::selection{background:var(--accent);color:var(--accent-ink)}
+
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2)}
+.lede{color:var(--muted);font-size:17px;max-width:62ch}
+.band{background:var(--surface-2)}
+section{scroll-margin-top:80px}
+
+.skip{position:absolute;left:-9999px;top:0;background:var(--accent);color:var(--accent-ink);
+  padding:12px 18px;z-index:99;border-radius:0 0 10px 0;font-weight:700}
+.skip:focus{left:0}
+
+/* ---------- buttons / the three link affordances ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:999px;
+  font-size:14px;font-weight:700;text-decoration:none;border:1px solid transparent;
+  transition:background .16s,color .16s,border-color .16s,transform .16s;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+/* inverted primary — the app paints its primary button stone-900, not sky */
+.btn-primary{background:var(--ink);color:var(--bg)}
+.btn-primary:hover{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:var(--surface);color:var(--ink);border-color:var(--hairline)}
+.btn-ghost:hover{border-color:var(--ink)}
+.btn-quiet{color:var(--muted);padding:11px 10px}
+.btn-quiet:hover{color:var(--ink)}
+.btn svg{width:15px;height:15px;flex:none;fill:currentColor}
+
+/* ---------- header ---------- */
+.site{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 86%,transparent);
+  backdrop-filter:saturate(1.6) blur(12px);border-bottom:1px solid var(--hairline)}
+.site .wrap{display:flex;align-items:center;gap:20px;height:62px}
+.wordmark{font-family:var(--font-display);font-size:19px;letter-spacing:-.03em;text-decoration:none;
+  display:flex;align-items:baseline;gap:.45em}
+.wordmark b{font-weight:800}
+.wordmark span{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0}
+.site nav{display:flex;gap:22px;margin-left:auto;font-size:14px}
+.site nav a{color:var(--muted);text-decoration:none;padding:4px 0;border-bottom:1.5px solid transparent}
+.site nav a:hover{color:var(--ink)}
+.site nav a[aria-current="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.site .links{display:flex;align-items:center;gap:6px;margin-left:auto}
+.site nav + .links{margin-left:16px}
+@media (max-width:1000px){.site nav{display:none}.site .links .label-long{display:none}}
+@media (max-width:560px){.site .wrap{gap:10px;padding:0 16px}.btn{padding:9px 13px;font-size:13px}
+  .wordmark span{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 8px}
+.hero .grid2{display:grid;grid-template-columns:1.12fr .88fr;gap:56px;align-items:center}
+.hero h1{font-size:clamp(33px,5.4vw,54px);max-width:14ch;margin-top:12px}
+.hero h1 em{font-style:normal;color:var(--accent);
+  background-image:linear-gradient(90deg,#0ea5e9,#22c55e);background-repeat:no-repeat;
+  background-size:100% 4px;background-position:0 96%;padding-bottom:3px}
+.hero .lede{margin-top:20px;font-size:clamp(16px,2.2vw,18.5px)}
+.hero .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;padding:0;list-style:none}
+.facts li{font-size:12.5px;color:var(--muted);border:1px solid var(--hairline);background:var(--surface);
+  border-radius:999px;padding:5px 12px}
+@media (max-width:900px){.hero{padding:44px 0 8px}.hero .grid2{grid-template-columns:1fr;gap:38px}}
+
+/* ---------- screenshot frames ---------- */
+.frame{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden}
+.frame .media{aspect-ratio:16/10;background:var(--surface-2)}
+.frame .media > *{width:100%;height:100%;object-fit:cover;object-position:top center}
+/* The app is mobile-first and every capture is a real 805x1512 phone screen,
+   so the bezel owns the exact aspect ratio: nothing is cropped, nothing letterboxes. */
+.frame.phone{max-width:288px;border-radius:34px;padding:10px;margin-inline:auto;
+  background:var(--ink);border:1px solid #0c0a09;
+  box-shadow:0 2px 4px rgba(28,25,23,.10), 0 26px 50px -22px rgba(28,25,23,.55)}
+.frame.phone .media{aspect-ratio:805/1512;border-radius:25px;overflow:hidden;background:#0a0a0a}
+.shotwrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+.shotwrap .route{font-family:var(--font-mono);font-size:11.5px;color:var(--muted);
+  background:var(--surface);border:1px solid var(--hairline);border-radius:999px;padding:4px 12px}
+
+/* ---------- generic section head ---------- */
+.head{max-width:70ch}
+.head h2{font-size:clamp(26px,3.6vw,38px);margin-top:10px}
+.head p{margin-top:14px;color:var(--muted);font-size:17px}
+.pad{padding:76px 0}
+.pad-sm{padding:56px 0}
+
+/* ---------- "what it is" ---------- */
+.what{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:start}
+.what p + p{margin-top:14px}
+.what .prose{font-size:17.5px}
+.what .prose strong{font-weight:700}
+.forwho{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);padding:22px 24px}
+.forwho h3{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.forwho ul{margin:14px 0 0;padding-left:0;list-style:none;display:grid;gap:12px}
+.forwho li{display:flex;gap:10px;font-size:15px;color:var(--muted)}
+.forwho li b{color:var(--ink);font-weight:700}
+.forwho li::before{content:"";flex:none;width:6px;height:6px;margin-top:9px;border-radius:50%;background:var(--accent)}
+@media (max-width:860px){.what{grid-template-columns:1fr;gap:32px}}
+
+/* ---------- comparison ---------- */
+.compare{margin-top:52px;overflow-x:auto;border:1px solid var(--hairline);border-radius:var(--radius);
+  background:var(--surface)}
+.compare table{border-collapse:collapse;width:100%;min-width:640px;font-size:14.5px}
+.compare th,.compare td{padding:13px 18px;text-align:left;border-bottom:1px solid var(--hairline)}
+.compare thead th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;background:var(--surface-2)}
+.compare tbody tr:last-child th,.compare tbody tr:last-child td{border-bottom:0}
+.compare tbody th{font-weight:600;color:var(--ink)}
+.compare td{color:var(--muted);font-family:var(--font-mono);font-size:13px}
+.compare .me{background:color-mix(in srgb,var(--accent) 5%,transparent);color:var(--ink);font-weight:500}
+.compare thead th.me{background:color-mix(in srgb,var(--accent) 11%,transparent);color:var(--accent)}
+.compare .yes{color:var(--accent-2);font-weight:500}
+.cap{margin-top:12px;font-size:13.5px;color:var(--muted);max-width:72ch}
+
+/* ---------- carousel ---------- */
+.tour{padding:76px 0 64px;border-top:1px solid var(--hairline);border-bottom:1px solid var(--hairline)}
+.tour .bar{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;
+  margin-top:34px;gap:0;overscroll-behavior-x:contain}
+.track::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;
+  display:grid;grid-template-columns:1.15fr .85fr;gap:52px;align-items:center;padding:0 24px}
+.slide .copy h3{font-size:clamp(24px,3.4vw,34px);margin-top:8px}
+.slide .copy h3 em{font-style:normal;color:var(--accent)}
+.slide .copy p{margin-top:14px;color:var(--muted);font-size:16.5px;max-width:44ch}
+.slide .copy ul{margin:18px 0 0;padding-left:0;list-style:none;display:grid;gap:8px;font-size:14.5px;color:var(--muted)}
+.slide .copy li::before{content:"— ";color:var(--accent)}
+.controls{display:flex;align-items:center;gap:14px;margin-top:30px;justify-content:center}
+.dots{display:flex;gap:8px}
+.dot{width:8px;height:8px;padding:0;border:0;border-radius:999px;background:color-mix(in srgb,var(--ink) 24%,transparent);
+  cursor:pointer;transition:width .2s,background .2s}
+.dot[aria-current="true"]{width:26px;background:var(--accent)}
+.arrow,.pause{width:34px;height:34px;display:grid;place-items:center;border-radius:999px;cursor:pointer;
+  border:1px solid var(--hairline);background:var(--surface);color:var(--ink)}
+.arrow:hover,.pause:hover{border-color:var(--ink)}
+.arrow svg,.pause svg{width:14px;height:14px;fill:currentColor}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+@media (max-width:900px){
+  .slide{grid-template-columns:1fr;gap:26px;padding:0 20px}
+  .slide .shotwrap{order:-1}
+  .slide .copy p{max-width:none}
+}
+
+/* ---------- steps ---------- */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;margin-top:38px;
+  background:var(--hairline);border:1px solid var(--hairline);border-radius:var(--radius);overflow:hidden}
+.step{background:var(--bg);padding:26px 24px}
+.step .n{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--accent-2);letter-spacing:.08em}
+.step h3{font-size:17px;margin-top:12px}
+.step p{margin-top:8px;font-size:14.5px;color:var(--muted)}
+
+/* ---------- feature grid ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:38px}
+.card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);padding:22px}
+.card h3{font-size:16px;display:flex;align-items:center;gap:9px}
+.card h3 svg{width:16px;height:16px;fill:none;stroke:var(--accent);stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round;flex:none}
+.card p{margin-top:9px;font-size:14.5px;color:var(--muted)}
+.card p code{font-family:var(--font-mono);font-size:13px;color:var(--ink)}
+
+/* ---------- stack ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;padding:0;list-style:none}
+.chips li{font-family:var(--font-mono);font-size:12.5px;background:var(--surface);border:1px solid var(--hairline);
+  border-radius:999px;padding:6px 13px;color:var(--muted)}
+.note{margin-top:22px;font-size:14.5px;color:var(--muted);max-width:64ch}
+
+/* ---------- faq ---------- */
+.faq{margin-top:34px;border-top:1px solid var(--hairline);max-width:78ch}
+.faq details{border-bottom:1px solid var(--hairline)}
+.faq summary{cursor:pointer;list-style:none;padding:18px 2px;font-weight:700;font-size:16px;
+  display:flex;justify-content:space-between;gap:16px;align-items:center}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--accent);font-weight:400;font-size:20px;line-height:1}
+.faq details[open] summary::after{content:"–"}
+.faq p{padding:0 2px 20px;color:var(--muted);font-size:15.5px;max-width:66ch}
+
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--hairline);background:var(--surface-2);padding:52px 0 40px;margin-top:0}
+.foot{display:flex;flex-wrap:wrap;gap:26px;justify-content:space-between;align-items:flex-start}
+.foot .links{display:flex;flex-wrap:wrap;gap:8px}
+.foot small{display:block;color:var(--muted);font-size:13px;line-height:1.7}
+.foot a.plain{color:var(--muted)}
+.foot a.plain:hover{color:var(--ink)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .btn:hover{transform:none}
+}
+@media (min-width:1px){html{scroll-behavior:smooth}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- ══ HEADER — link affordances #1 ══════════════════════════════════ -->
+<header class="site">
+  <div class="wrap">
+    <a class="wordmark" href="#top"><b>Open Court</b><span>club badminton tournaments</span></a>
+
+    <nav aria-label="Page sections">
+      <a href="#what">What it is</a>
+      <a href="#tour">Tour</a>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <div class="links">
+      <a class="btn btn-primary" href="https://opencourt-badminton.vercel.app" rel="noopener">Open the app</a>
+      <a class="btn btn-ghost" href="https://github.com/kbrovibes/opencourt" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.72 1.23 1.88.87 2.34.67.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span class="label-long">View source</span>
+      </a>
+      <a class="btn btn-quiet" href="https://kbrovibes.github.io/">All projects</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ══ 1. HERO ══════════════════════════════════════════════════════ -->
+<section id="top" class="hero">
+  <div class="wrap grid2">
+    <div>
+      <p class="eyebrow">Club badminton tournaments</p>
+      <h1>Tournaments that don't feel like <em>spreadsheets</em>.</h1>
+      <p class="lede">For the person who runs the club night. Create an event, drop the short link in the group chat, tap players into teams, and score the whole bracket from courtside on a phone.</p>
+
+      <div class="cta">
+        <a class="btn btn-primary" href="https://opencourt-badminton.vercel.app" rel="noopener">Open the app</a>
+        <a class="btn btn-ghost" href="https://github.com/kbrovibes/opencourt" rel="noopener">View source on GitHub</a>
+        <a class="btn btn-quiet" href="https://kbrovibes.github.io/">← Back to all projects</a>
+      </div>
+
+      <ul class="facts">
+        <li>Next.js 16 + Supabase</li>
+        <li>Free, no ads</li>
+        <li>Mobile-first PWA</li>
+        <li>Public source</li>
+      </ul>
+    </div>
+
+    <div class="shotwrap">
+      <div class="frame phone">
+        <div class="media">
+          <img src="media/hero.png" fetchpriority="high"
+               alt="Live tournament overview with semifinal scores and two teams advancing to the final">
+        </div>
+      </div>
+      <span class="route">/e/SMASH1 · Overview</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 2. WHAT IT IS ════════════════════════════════════════════════ -->
+<section id="what" class="pad">
+  <div class="wrap">
+    <div class="what">
+      <div>
+        <p class="eyebrow">What it is</p>
+        <h2 style="font-size:clamp(26px,3.6vw,38px);margin-top:10px">A tournament that survives past Tuesday</h2>
+        <div class="prose" style="margin-top:18px">
+          <p>A club tournament usually runs on a shared spreadsheet, a photo of a whiteboard, and forty messages asking who is actually playing. The names were free text, the schedule link is dead by Tuesday, and nobody can remember who they played in the group stage last month.</p>
+          <p>Open Court gives each event a short URL like <strong>/e/SMASH1</strong>. Players register and check in through it, an admin taps two names to make a team, picks a format, and the app generates the matches. Scores flow through the bracket. The player rows stay put for the next tournament.</p>
+        </div>
+      </div>
+      <aside class="forwho">
+        <h3>Who it's for</h3>
+        <ul>
+          <li><span><b>Club organisers.</b> You already do the running on a drop-in night. This is the tournament version of that job, on a phone.</span></li>
+          <li><span><b>Casual club players.</b> Tap the link from the group chat, register, check in, find your name in the bracket. Nothing to maintain.</span></li>
+          <li><span><b>Not for</b> ranked circuits or paid entries. There are no payments, no ranking points, no seeding by rating, and no federation anything.</span></li>
+        </ul>
+      </aside>
+    </div>
+
+    <div class="compare">
+      <table>
+        <caption class="sr">How Open Court compares with the two kinds of tool club players already use</caption>
+        <thead>
+          <tr>
+            <th scope="col">&nbsp;</th>
+            <th scope="col">Link-and-go schedulers</th>
+            <th scope="col">Rating-platform apps</th>
+            <th scope="col" class="me">Open Court</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Set up and share in minutes</th><td class="yes">Yes</td><td>No</td><td class="me yes">Yes — links like /e/SMASH1</td></tr>
+          <tr><th scope="row">Players persist between tournaments</th><td>No</td><td class="yes">Yes</td><td class="me yes">Yes</td></tr>
+          <tr><th scope="row">Works when half the crowd won't sign up</th><td class="yes">Yes</td><td>No</td><td class="me yes">Yes — admins add players by name</td></tr>
+          <tr><th scope="row">Fixed-pair teams</th><td>No</td><td>Partly</td><td class="me yes">Yes — tap two players</td></tr>
+          <tr><th scope="row">Formats that suit six teams</th><td>No</td><td>No</td><td class="me yes">Yes — fixed rounds plus playoffs</td></tr>
+          <tr><th scope="row">Ads</th><td>Yes</td><td>—</td><td class="me">Never</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap">Two tools already exist for club badminton: the anonymous scheduler you share once and lose, and the rating platform that wants everyone to make an account first. The README names the specific ones and explains why neither fit a six-team club night.</p>
+  </div>
+</section>
+
+<!-- ══ 3. TOUR ══════════════════════════════════════════════════════ -->
+<section id="tour" class="tour band"
+         aria-roledescription="carousel" aria-label="Product tour">
+  <div class="wrap bar">
+    <div class="head">
+      <p class="eyebrow">Tour</p>
+      <h2>One night, four screens</h2>
+    </div>
+    <div class="controls" style="margin-top:0">
+      <button class="arrow" data-prev type="button" aria-controls="track" aria-label="Previous slide">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2 4.5 8l6 6 1.4-1.4L7.3 8l4.6-4.6z"/></svg></button>
+      <button class="arrow" data-next type="button" aria-controls="track" aria-label="Next slide">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 2 4.1 3.4 8.7 8l-4.6 4.6L5.5 14l6-6z"/></svg></button>
+      <button class="pause" data-toggle type="button" aria-label="Pause automatic slide rotation" aria-pressed="false">
+        <svg viewBox="0 0 16 16" aria-hidden="true" data-icon><rect x="4" y="3" width="3" height="10" rx="1"/><rect x="9" y="3" width="3" height="10" rx="1"/></svg></button>
+    </div>
+  </div>
+
+  <div class="track" id="track" tabindex="0" role="group" aria-label="Slides, use arrow keys">
+
+    <article class="slide" role="group" aria-roledescription="slide" aria-label="1 of 4: The events list">
+      <div class="copy">
+        <p class="eyebrow">Events</p>
+        <h3>Every event in <em>one list</em></h3>
+        <p>Ongoing and open events sit at the top, finished ones below. Each card carries the date, singles or doubles, and how many of the maximum places are taken. More than one tournament can be live at the same time.</p>
+        <ul>
+          <li>A LIVE badge while an event is running</li>
+          <li>Registered-of-maximum on every card</li>
+          <li>Create Event is the first thing on screen</li>
+        </ul>
+      </div>
+      <div class="shotwrap">
+        <div class="frame phone">
+          <div class="media">
+            <img src="media/tour-01-events-home.png" loading="lazy" decoding="async"
+                 alt="Events list showing two live doubles tournaments and one completed event below">
+          </div>
+        </div>
+        <span class="route">/events</span>
+      </div>
+    </article>
+
+    <article class="slide" role="group" aria-roledescription="slide" aria-label="2 of 4: Team formation">
+      <div class="copy">
+        <p class="eyebrow">Teams</p>
+        <h3>Tap two names, <em>done</em></h3>
+        <p>Team formation is the whole screen. Tap a player, tap their partner, that is a team. Players who already confirmed each other as doubles partners can be pulled in with one button. Finalise the lineup in a single save.</p>
+        <ul>
+          <li>Only checked-in players are offered</li>
+          <li>Use confirmed pairs in one tap</li>
+          <li>Share link lives on the event card</li>
+        </ul>
+      </div>
+      <div class="shotwrap">
+        <div class="frame phone">
+          <div class="media">
+            <img src="media/tour-02-team-formation.png" loading="lazy" decoding="async"
+                 alt="Team formation screen with eight checked-in player chips and a confirmed-pairs button">
+          </div>
+        </div>
+        <span class="route">/e/SMASH1 · Team formation</span>
+      </div>
+    </article>
+
+    <article class="slide" role="group" aria-roledescription="slide" aria-label="3 of 4: The live bracket">
+      <div class="copy">
+        <p class="eyebrow">Bracket</p>
+        <h3>Winners <em>advance</em> themselves</h3>
+        <p>Pick one of five formats and the matches generate. Enter a score at courtside and the winning pair moves into the next round on its own. A progress bar counts how many matches are done, so nobody has to ask.</p>
+        <ul>
+          <li>Groups, fixed rounds, round robin, knockout, manual</li>
+          <li>Overview, Matches, Standings and Players tabs</li>
+          <li>Losing scores strike through as results land</li>
+        </ul>
+      </div>
+      <div class="shotwrap">
+        <div class="frame phone">
+          <div class="media">
+            <img src="media/tour-03-live-bracket.png" loading="lazy" decoding="async"
+                 alt="Live bracket with two finished semifinals feeding a final, progress bar at sixty-seven percent">
+          </div>
+        </div>
+        <span class="route">/e/SMASH1 · Overview</span>
+      </div>
+    </article>
+
+    <article class="slide" role="group" aria-roledescription="slide" aria-label="4 of 4: Champions">
+      <div class="copy">
+        <p class="eyebrow">Champions</p>
+        <h3>The bit worth <em>screenshotting</em></h3>
+        <p>A completed event opens on a trophy banner: champions, runners-up, and the totals for players, matches and points. The finished bracket stays underneath with every score. Reopen it if something was entered wrong.</p>
+        <ul>
+          <li>Champions and runners-up named on top</li>
+          <li>Player, match and point totals</li>
+          <li>The event stays readable after the night ends</li>
+        </ul>
+      </div>
+      <div class="shotwrap">
+        <div class="frame phone">
+          <div class="media">
+            <img src="media/tour-04-champions.png" loading="lazy" decoding="async"
+                 alt="Completed event with a trophy banner naming the champion pair, runners-up and event totals">
+          </div>
+        </div>
+        <span class="route">/e/SMASH1 · Completed</span>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="controls">
+    <div class="dots" aria-label="Choose a slide">
+      <button class="dot" type="button" aria-current="true"  aria-label="Slide 1"></button>
+      <button class="dot" type="button" aria-current="false" aria-label="Slide 2"></button>
+      <button class="dot" type="button" aria-current="false" aria-label="Slide 3"></button>
+      <button class="dot" type="button" aria-current="false" aria-label="Slide 4"></button>
+    </div>
+  </div>
+  <p class="sr" aria-live="polite" data-live></p>
+</section>
+
+<!-- ══ 4. HOW IT WORKS ══════════════════════════════════════════════ -->
+<section id="how" class="pad">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">How it works</p>
+      <h2>From group chat to champions</h2>
+      <p>The order an organiser actually does it in, from an empty event to a trophy banner.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><p class="n">01</p><h3>Create the event</h3><p>Date, singles or doubles, maximum players, and an optional check-in window. The event gets a short URL you can paste straight into the group chat.</p></div>
+      <div class="step"><p class="n">02</p><h3>Register and check in</h3><p>Players sign in with Google and register themselves; anyone past the maximum lands on a waitlist. Admins paste in names for the people who never will.</p></div>
+      <div class="step"><p class="n">03</p><h3>Form teams, pick a format</h3><p>Tap two checked-in players into a team, finalise the lineup, choose one of five formats, and the app generates the match list.</p></div>
+      <div class="step"><p class="n">04</p><h3>Score it courtside</h3><p>Enter scores on a phone between games. Winners advance, standings recalculate, and the finished event keeps its champions and its bracket.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 5. FEATURES ══════════════════════════════════════════════════ -->
+<section id="features" class="pad band">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Features</p>
+      <h2>What's actually in it</h2>
+    </div>
+    <div class="grid">
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>Short share links</h3><p>Every event gets a URL like <code>/e/SMASH1</code> that survives the login redirect, so a tap in WhatsApp lands on the right page.</p></div>
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-8 0v2"/><circle cx="12" cy="8" r="3.5"/><path d="M20 20v-2a4 4 0 0 0-3-3.8"/></svg>Players that persist</h3><p>Player records carry across tournaments, so next month's event starts with the people who turned up to this one.</p></div>
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h9"/><circle cx="18.5" cy="17" r="2.5"/></svg>Automatic waitlists</h3><p>Registrations past the maximum player count go to a waitlist computed from sign-up order, not from who shouted loudest.</p></div>
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h11M4 10h11M4 15h7"/><path d="M18 9v8M14 13h8"/></svg>Bulk player add</h3><p>Admins paste a list of names to create players in one go, for the crowd that is never going to make an account.</p></div>
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Confirmed doubles pairs</h3><p>Two players can confirm each other as partners, and team formation pulls every confirmed pair in with one button.</p></div>
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h6v5H4zM4 13h6v5H4zM14 9h6v6h-6z"/><path d="M10 8.5h4M10 15.5h4"/></svg>Five match formats</h3><p>Groups plus knockout, fixed rounds, round robin, single elimination, or fully manual — chosen per event, not per app.</p></div>
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V9m5 9V5m5 13v-7m5 7V12"/></svg>Standings and results</h3><p>Team standings with points difference, a results matrix, and the bracket view, all tabs on the same event page.</p></div>
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l2.3 4.7 5.2.8-3.75 3.65.9 5.15L12 15.9l-4.65 2.4.9-5.15L4.5 9.5l5.2-.8z"/></svg>Skill ratings, admin-only</h3><p>Players carry a one-to-five skill level that only admins can see, so tapping teams together in front of everyone stays bias-free.</p></div>
+      <div class="card"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>Installs like an app</h3><p>It ships a web manifest and registers a service worker, so you can add it to a home screen and run it full-screen.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 6. BUILT WITH ════════════════════════════════════════════════ -->
+<section id="stack" class="pad-sm">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Built with</p>
+      <h2>The stack, and where the data lives</h2>
+    </div>
+    <ul class="chips">
+      <li>Next.js 16</li><li>React 19</li><li>TypeScript</li><li>Tailwind CSS 4</li><li>Supabase Postgres</li><li>Supabase Auth</li><li>Vercel</li>
+    </ul>
+    <p class="note">Events, players, teams and scores live in a Supabase Postgres database; sign-in is Google through Supabase Auth. Hosting is Vercel, where Vercel Analytics and Speed Insights are switched on. No ORM, no component library, no ads, nothing sold on.</p>
+  </div>
+</section>
+
+<!-- ══ 7. FAQ ═══════════════════════════════════════════════════════ -->
+<section id="faq" class="pad-sm">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">FAQ</p>
+      <h2>Reasonable questions</h2>
+    </div>
+    <div class="faq">
+      <details open><summary>Is it free?</summary><p>Yes, and there are no ads. It runs on the Vercel and Supabase free tiers. Nobody is charged to create an event, register for one, or play in it.</p></details>
+      <details><summary>Do I need an account?</summary><p>To register yourself, yes — Google sign-in. If you would rather not, an admin can add you by name, and the profile links up if you ever do log in with that email.</p></details>
+      <details><summary>Where does my data go?</summary><p>A Supabase Postgres database, with authentication handled by Supabase. The site itself runs Vercel Analytics and Speed Insights. No ads, no third-party trackers, nothing sold.</p></details>
+      <details><summary>Does it work on a phone?</summary><p>It was built for one — everything above was shot on a phone. It ships a web manifest and a service worker, so you can add it to your home screen and it opens full-screen.</p></details>
+      <details><summary>Can I run my own copy?</summary><p>The repo is public. You need a Supabase project with the migrations in <code>supabase/migrations/</code> applied and Google OAuth configured; after that it is a git push to Vercel.</p></details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ══ FOOTER — link affordances #2 ═════════════════════════════════ -->
+<footer>
+  <div class="wrap foot">
+    <div>
+      <a class="wordmark" href="#top" style="text-decoration:none"><b>Open Court</b><span>club badminton tournaments</span></a>
+      <small style="margin-top:12px">
+        Built by <a class="plain" href="https://karthikrajan.info" rel="noopener">Karthik Rajan</a>, with rackets in Snoqualmie and Chennai. 🏸<br>
+        Last updated <time datetime="2026-08">August 2026</time>.
+      </small>
+    </div>
+    <div class="links">
+      <a class="btn btn-primary" href="https://opencourt-badminton.vercel.app" rel="noopener">Open the app</a>
+      <a class="btn btn-ghost" href="https://github.com/kbrovibes/opencourt" rel="noopener">View source on GitHub</a>
+      <a class="btn btn-ghost" href="https://kbrovibes.github.io/">All projects</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   Markup-driven: add or remove .slide elements (and matching
+   .dot buttons) and the carousel adapts.
+   ============================================================ */
+(function () {
+  "use strict";
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  /* ---------- 1. Carousel ---------- */
+  var track = document.getElementById("track");
+  if (track) {
+    var slides = Array.prototype.slice.call(track.querySelectorAll(".slide"));
+    var dots   = Array.prototype.slice.call(document.querySelectorAll(".dot"));
+    var live   = document.querySelector("[data-live]");
+    var toggle = document.querySelector("[data-toggle]");
+    var index  = 0;
+    var paused = false;      // user asked for pause
+    var resting = true;      // no pointer/focus inside right now
+    var timer  = null;
+    var AUTOPLAY_MS = 6500;
+
+    function label(i) {
+      var s = slides[i];
+      var h = s && s.querySelector(".copy h3");
+      return "Slide " + (i + 1) + " of " + slides.length + (h ? ": " + h.textContent.trim() : "");
+    }
+
+    function paint(i) {
+      index = i;
+      dots.forEach(function (d, n) { d.setAttribute("aria-current", n === i ? "true" : "false"); });
+      if (live) live.textContent = label(i);
+    }
+
+    function goTo(i, smooth) {
+      var n = (i + slides.length) % slides.length;
+      track.scrollTo({
+        left: n * track.clientWidth,
+        behavior: smooth && !reduce.matches ? "smooth" : "auto"
+      });
+      paint(n);
+    }
+
+    /* scroll-spy: the scroll position is the source of truth */
+    var raf = null;
+    track.addEventListener("scroll", function () {
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        raf = null;
+        var n = Math.round(track.scrollLeft / track.clientWidth);
+        if (n !== index && slides[n]) paint(n);
+      });
+    }, { passive: true });
+
+    dots.forEach(function (d, n) {
+      d.addEventListener("click", function () { rest(false); goTo(n, true); });
+    });
+    var prev = document.querySelector("[data-prev]");
+    var next = document.querySelector("[data-next]");
+    if (prev) prev.addEventListener("click", function () { rest(false); goTo(index - 1, true); });
+    if (next) next.addEventListener("click", function () { rest(false); goTo(index + 1, true); });
+
+    /* keyboard: arrows when the track (or anything inside it) has focus */
+    track.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight") { e.preventDefault(); rest(false); goTo(index + 1, true); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); rest(false); goTo(index - 1, true); }
+      else if (e.key === "Home") { e.preventDefault(); rest(false); goTo(0, true); }
+      else if (e.key === "End") { e.preventDefault(); rest(false); goTo(slides.length - 1, true); }
+    });
+
+    /* autoplay, and every way it can stop */
+    var PLAY = '<path d="M4 2.5v11l9-5.5z"></path>';
+    var PAUSE = '<rect x="4" y="3" width="3" height="10" rx="1"></rect><rect x="9" y="3" width="3" height="10" rx="1"></rect>';
+
+    function rest(v) { resting = v; }
+
+    function tick() {
+      if (paused || !resting || document.hidden) return;
+      goTo(index + 1, true);
+    }
+
+    function start() {
+      stop();
+      if (reduce.matches) return;      /* honour prefers-reduced-motion: no autoplay */
+      timer = setInterval(tick, AUTOPLAY_MS);
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    function setPaused(v) {
+      paused = v;
+      if (toggle) {
+        toggle.setAttribute("aria-pressed", v ? "true" : "false");
+        toggle.setAttribute("aria-label", v ? "Resume automatic slide rotation" : "Pause automatic slide rotation");
+        var icon = toggle.querySelector("[data-icon]");
+        if (icon) icon.innerHTML = v ? PLAY : PAUSE;
+      }
+    }
+
+    if (toggle) {
+      if (reduce.matches) { toggle.hidden = true; }
+      toggle.addEventListener("click", function () { setPaused(!paused); });
+    }
+
+    /* hovering, touching, or tabbing into the carousel suspends rotation */
+    ["pointerenter", "pointerdown", "focusin"].forEach(function (ev) {
+      track.addEventListener(ev, function () { rest(false); });
+    });
+    ["pointerleave", "focusout"].forEach(function (ev) {
+      track.addEventListener(ev, function () { rest(true); });
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) stop(); else start();
+    });
+    reduce.addEventListener("change", function () { start(); if (toggle) toggle.hidden = reduce.matches; });
+
+    /* keep the slide aligned when the viewport changes width */
+    var rt = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(rt);
+      rt = setTimeout(function () { goTo(index, false); }, 120);
+    });
+
+    paint(0);
+    start();
+  }
+
+  /* ---------- 2. Header scroll-spy ---------- */
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll(".site nav a"));
+  var targets = navLinks
+    .map(function (a) { return document.querySelector(a.getAttribute("href")); })
+    .filter(Boolean);
+
+  if (targets.length && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        navLinks.forEach(function (a) {
+          a.setAttribute("aria-current", a.getAttribute("href") === "#" + entry.target.id ? "true" : "false");
+        });
+      });
+    }, { rootMargin: "-45% 0px -50% 0px", threshold: 0 });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+})();
+</script>
+</body>
+</html>
